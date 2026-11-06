@@ -9,7 +9,7 @@ Supports raw commands such as ZPL and ESC/POS. The agent does not detect printer
 ## Install
 
 ```powershell
-dotnet add package SinergiaAI.PrintAgent --version 0.2.0-preview.2
+dotnet add package SinergiaAI.PrintAgent --version 0.3.0-preview.1
 ```
 
 In Visual Studio, select **nuget.org** and enable **Include prerelease** to find the preview version.
@@ -17,6 +17,12 @@ In Visual Studio, select **nuget.org** and enable **Include prerelease** to find
 Requires .NET 10 and the ASP.NET Core shared framework. Non-Web .NET projects need `<FrameworkReference Include="Microsoft.AspNetCore.App" />`. Install in the backend / Blazor Server, not in a browser/WebAssembly project. Add the same package to each project that uses its types.
 
 Installing the NuGet package does not install a Windows service. The computer connected to the printers uses the EXE installer described below.
+
+See the repository's [technical integration guide](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/funcionamento-e-integracao.md) (Portuguese) for installer internals, per-machine discovery, version checks and the Blazor adapter used by the Comercial pilot. The pilot's `IAgenteImpressaoService` and `IAgenteImpressaoConexao` belong to its Common library; they are not public APIs included in this package.
+
+The 0.3 Windows service exposes discovery only on `http://127.0.0.1:17831`. Browser JavaScript calls `/info` and `/connect`; `PrintDiscoveryService` issues a short-lived challenge, validates the service's confirmation and provides a browser-specific proof for the same machine installation. The permanent agent token never reaches the browser. Backend endpoints that issue/redeem challenges must require application authentication. Sending jobs still uses the backend queue, not this local bridge. Browser profiles may require local-network permission.
+
+Use the numeric version returned by `/info` to compare with the Windows installer actually distributed by your backend (currently `0.3.0`), not with the NuGet version `0.3.0-preview.1`. A failed local request cannot distinguish an absent/stopped agent from browser restrictions and does not prove an update is available. Updating the service requires executing the installer; automatic updates are not implemented.
 
 ## 1. Register the embedded API
 
@@ -58,7 +64,7 @@ Inject `PrintStore` and `PrintEnrollmentService` into your backend service. Afte
 var credentials = store.CreateInstallation("Shipping workstation");
 ```
 
-Associate `credentials.InstallationId` with the authorized user/company in your application. Store `credentials.AgentToken` encrypted on the server. The module stores only the token hash and cannot recover the original token. Reopening the page or going offline must not automatically create another installation.
+Treat `credentials.InstallationId` as the machine installation identity and enforce user/company access in your application. Do not bind discovery exclusively to the creating user's login. Store `credentials.AgentToken` encrypted on the server; token authentication only retains its hash. `PrintDiscoveryService.RegisterMachine` can protect the recoverable credentials for discovery/enrollment. Reopening the page or going offline must not automatically create another installation.
 
 In your authenticated download endpoint, verify ownership, retrieve the protected credentials and return a contextual installer:
 
@@ -166,3 +172,20 @@ Existing Windows service names, data directories, enrollment format and public i
 Source and complete Portuguese guide: [MohammadMassoud/PrintAgent](https://github.com/MohammadMassoud/PrintAgent).
 
 License: MIT. Copyright (c) 2026 MohammadMassoud.
+
+## Machine discovery (0.3 preview)
+
+The Windows service now exposes a **loopback-only** bridge on `http://127.0.0.1:17831`. Discovery identifies the installed agent, independently of the application login, browser profile or interactive Windows user. It does not identify a workstation by IP or user ID. Upgrade an existing 0.2 agent once to enable this feature; its service name, configuration and durable journal are preserved. Installing a new NuGet package alone does not update the Windows service.
+
+The bridge accepts requests only from the configured application's origin (loopback development origins may use different HTTP/HTTPS ports). It exposes no permanent token, accepts no print jobs, validates the exact configured API address and does not listen on the LAN. Browsers may require local-network permission the first time each profile connects; use `targetAddressSpace: 'loopback'` in local fetch options where supported. Permission cannot be bypassed by the application.
+
+`AddSinergiaAIPrintAgentServer` now registers `PrintDiscoveryService`; `MapSinergiaAIPrintAgent` also maps the agent-authenticated `/machine/confirm` callback. To integrate discovery with your application's authorization:
+
+1. An authenticated backend endpoint calls `CreateChallenge()` and returns the short-lived code with `Cache-Control: no-store`.
+2. Browser code sends `{ apiBaseUrl, challenge }` to the local bridge's `/connect`. The service confirms the challenge directly with its configured backend using its permanent token.
+3. An authenticated backend endpoint calls `RedeemChallenge(challenge, existingProof)` and returns the machine proof. Redemption is atomic and single-use; the permanent token remains protected on the server.
+4. Keep the opaque proof separately from user-specific browser storage and call `GetMachine(proof)` after authenticating a user. A new browser obtains its own proof from the same local service and recognizes the same installation. Never grant access merely because a caller knows an installation GUID.
+
+`GetCredentials(proof)` is a backend-only operation for creating a contextual installer. `ForgetProof(proof)` revokes that browser's recognition, preserving other browser proofs and the print queue. The active Windows service can be discovered again. Proofs expire; create a fresh local challenge to renew them.
+
+The ERP Common adapter implements the authenticated browser endpoints and JavaScript module. Other consumers should implement equivalent authenticated endpoints and user permissions appropriate to their application. The generic module does not assume an ERP, tenant or user ownership model.

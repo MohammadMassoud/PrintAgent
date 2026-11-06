@@ -1,12 +1,12 @@
 # Publicação do pacote único
 
 Produto: **PrintAgent**, da SinergiaAI. Pacote: **SinergiaAI.PrintAgent**.
-Versão preparada: **0.2.0-preview.2**. Requer **.NET 10 e ASP.NET Core**.
+Versão preparada: **0.3.0-preview.1**. Requer **.NET 10 e ASP.NET Core**.
 Licença MIT, autorizada pelo proprietário. Repositório: https://github.com/MohammadMassoud/PrintAgent.
 
 ## O que publicar
 
-Somente `artifacts/nuget-unified/SinergiaAI.PrintAgent.0.2.0-preview.2.nupkg`.
+Somente `artifacts/nuget-unified/SinergiaAI.PrintAgent.0.3.0-preview.1.nupkg`.
 
 O arquivo contém `SinergiaAI.PrintAgent.Server.dll`, `SinergiaAI.PrintAgent.Client.dll` e `SinergiaAI.PrintAgent.Contracts.dll`, além do README e da licença. O inicializador Windows está embutido em Server. Não há dependência dos antigos pacotes SinergiaPrint. Dependências de terceiros, como SQLite, são restauradas pelo NuGet.
 
@@ -41,7 +41,7 @@ Nas próximas versões, atualize `Version` em `build/NuGetPackage.props`, as ins
 Após a publicação:
 
 ```powershell
-dotnet add package SinergiaAI.PrintAgent --version 0.2.0-preview.2
+dotnet add package SinergiaAI.PrintAgent --version 0.3.0-preview.1
 ```
 
 Remova antes os PackageReferences antigos `SinergiaPrint.Server`, `SinergiaPrint.Client` e `SinergiaPrint.Contracts`, ou os ProjectReferences equivalentes. Instale o pacote único em cada projeto que utilizar os tipos; em uma solução com backend e biblioteca de páginas separados, ambos podem precisar da referência. Não combine os pacotes antigos com o novo.
@@ -56,6 +56,14 @@ Para desenvolvimento com ProjectReference ao Server, referencie Contracts explic
 
 Os três pacotes `SinergiaPrint.Contracts`, `SinergiaPrint.Client` e `SinergiaPrint.Server` foram publicados anteriormente na versão `0.2.0-preview.1`. Em 06/11/2026, os três foram retirados da listagem (unlisted) a pedido do proprietário. O NuGet não permite exclusão permanente pelo painel. A restauração por versão exata continua disponível; as buscas podem demorar algumas horas para refletir a retirada.
 
-O piloto do Comercial ainda usa referências locais; seus caminhos, imports e chamadas foram atualizados para os nomes novos. A troca para PackageReference pode ser feita depois da publicação.
+O piloto do Comercial utiliza `PackageReference` ao pacote único na biblioteca Common; os projetos consumidores recebem os tipos pela referência transitiva. Não depende de caminhos absolutos para o repositório do agente.
 
 Identificadores de compatibilidade do serviço Windows, diretórios de dados, formato de inscrição e URL pública do instalador foram preservados para não desconectar instalações existentes. Isso não afeta os novos namespaces e nomes das DLLs.
+
+## Atualização 0.3: reconhecimento da máquina
+
+O instalador Windows 0.3.0 está no servidor de downloads. O pacote `SinergiaAI.PrintAgent.0.3.0-preview.1.nupkg` foi enviado ao NuGet.org e sua listagem foi confirmada pelo proprietário. Inclui o inicializador com o hash desse instalador e os serviços de descoberta. Não sobrescreva nenhuma versão publicada.
+
+O consumidor que ainda usa o agente Windows 0.2 precisa atualizá-lo uma vez pelo botão da página. Só o NuGet não atualiza o serviço instalado. A configuração e o diário são mantidos. Depois, usuários diferentes e perfis de navegador distintos reconhecem o mesmo serviço local.
+
+Os ajustes seguintes de mensagens, comparação da versão e encapsulamento de JS no `Sinergia.Maui.Common` não alteram as DLLs do pacote público nem o serviço Windows. Basta publicar o aplicativo consumidor. Os READMEs foram atualizados no código-fonte; o README de uma versão NuGet já publicada não muda com essa edição. Inclua a documentação no próximo pacote, com versão nova, quando houver uma publicação.

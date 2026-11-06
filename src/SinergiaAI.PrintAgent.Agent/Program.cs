@@ -14,4 +14,5 @@ builder.Services.AddSingleton<WindowsRawReceiptPrinter>();
 builder.Services.AddWindowsService(o => o.ServiceName = "SinergiaPrint Agent");
 builder.Services.AddHttpClient("api", http => { http.BaseAddress = new Uri(options.ApiBaseUrl.TrimEnd('/') + $"/agent/{options.InstallationId}/"); http.DefaultRequestHeaders.Add("X-Agent-Token", options.Token); http.Timeout = TimeSpan.FromSeconds(30); });
 builder.Services.AddHostedService<AgentWorker>();
+builder.Services.AddHostedService<LocalAgentBridge>();
 await builder.Build().RunAsync();

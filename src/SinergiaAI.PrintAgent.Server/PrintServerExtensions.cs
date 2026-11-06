@@ -18,11 +18,18 @@ public static class PrintServerExtensions
         services.AddSingleton<PrintStore>();
         services.AddDataProtection();
         services.AddSingleton<PrintEnrollmentService>();
+        services.AddSingleton<PrintDiscoveryService>();
         return services;
     }
 
     public static IEndpointRouteBuilder MapSinergiaAIPrintAgent(this IEndpointRouteBuilder endpoints, string prefix = "")
     {
+        endpoints.MapPost(prefix.TrimEnd('/') + "/machine/confirm", (ConfirmPrintMachineRequest request, HttpContext context, PrintDiscoveryService discovery) =>
+        {
+            context.Response.Headers.CacheControl = "no-store";
+            return discovery.Confirm(request, context.Request.Headers["X-Agent-Token"].ToString())
+                ? Results.NoContent() : Results.Unauthorized();
+        }).AllowAnonymous();
         endpoints.MapPost(prefix.TrimEnd('/') + "/enrollment/redeem", (EnrollmentCodeRequest request, HttpContext context, PrintEnrollmentService enrollment) =>
         {
             context.Response.Headers.CacheControl = "no-store";

@@ -1,27 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
   <PropertyGroup>
     <AssemblyName>PrintFixture</AssemblyName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
     <ComercialRoot Condition="'$(ComercialRoot)' == ''">D:/Erp/Mobile/Sinergia/Sinergia.Mobile/Applications/Comercial</ComercialRoot>
     <DefaultItemExcludes>$(DefaultItemExcludes);Components\Testes/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/SinergiaAI.PrintAgent.Server/SinergiaAI.PrintAgent.Server.csproj" />
-    <ProjectReference Include="../../src/SinergiaAI.PrintAgent.Contracts/SinergiaAI.PrintAgent.Contracts.csproj" />
+    <ProjectReference Include="$(ComercialRoot)/../../SharedTi/Sinergia.Maui.Common/Sinergia.Maui.Common.csproj" />
+    <PackageReference Include="Syncfusion.Blazor.Lists" Version="35.1.40" />
+    <PackageReference Include="Syncfusion.Blazor.Popups" Version="35.1.40" />
     <PackageReference Include="Syncfusion.Blazor.Grid" Version="35.1.40" />
     <PackageReference Include="Syncfusion.Blazor.DropDowns" Version="35.1.40" />
     <PackageReference Include="Syncfusion.Blazor.Inputs" Version="35.1.40" />
     <PackageReference Include="Syncfusion.Blazor.Buttons" Version="35.1.40" />
     <PackageReference Include="Syncfusion.Blazor.Themes" Version="35.1.40" />
     <Content Include="Components\Testes/AgenteImpressaoTeste.razor" />
+    <Content Remove="wwwroot/print-agent.css" />
+    <Content Include="wwwroot/print-agent.css" />
     <RazorComponent Include="Components\Testes/AgenteImpressaoTeste.razor" />
-    <Content Include="Components\Testes/AgenteImpressaoTeste.razor.css" />
+    <Content Include="Components\Testes/AgenteImpressaoTeste.razor.css" Condition="Exists('$(ComercialRoot)/Maui.Comercial.Pages/Testes/AgenteImpressaoTeste.razor.css')" />
     <Compile Include="Components\Testes/AgenteImpressaoTeste.razor.cs" />
-    <Compile Include="Components\Testes/IAgenteImpressaoTesteService.cs" />
-    <Compile Include="$(ComercialRoot)/Maui.Comercial/Services/AgenteImpressaoTesteService.cs" Link="Services/AgenteImpressaoTesteService.cs" />
-    <Compile Include="$(ComercialRoot)/Maui.Comercial/Services/AgenteImpressaoTesteEndpoints.cs" Link="Services/AgenteImpressaoTesteEndpoints.cs" />
   </ItemGroup>
   <Target Name="CopyComercialFixtureSources" BeforeTargets="PrepareForBuild">
-    <MakeDir Directories="$(MSBuildProjectDirectory)/Components\Testes" />
-    <Copy SourceFiles="$(ComercialRoot)/Maui.Comercial.Pages/Testes/AgenteImpressaoTeste.razor;$(ComercialRoot)/Maui.Comercial.Pages/Testes/AgenteImpressaoTeste.razor.css;$(ComercialRoot)/Maui.Comercial.Pages/Testes/AgenteImpressaoTeste.razor.cs;$(ComercialRoot)/Maui.Comercial.Pages/Testes/IAgenteImpressaoTesteService.cs" DestinationFolder="$(MSBuildProjectDirectory)/Components\Testes" />
+    <MakeDir Directories="$(MSBuildProjectDirectory)/Components\Testes;$(MSBuildProjectDirectory)/wwwroot" />
+    <Copy SourceFiles="$(ComercialRoot)/Maui.Comercial.Pages/Testes/AgenteImpressaoTeste.razor.css" DestinationFiles="$(MSBuildProjectDirectory)/wwwroot/print-agent.css" SkipUnchangedFiles="true" Condition="Exists('$(ComercialRoot)/Maui.Comercial.Pages/Testes/AgenteImpressaoTeste.razor.css')" />
+    <Copy SourceFiles="$(ComercialRoot)/Maui.Comercial.Pages/Testes/AgenteImpressaoTeste.razor;$(ComercialRoot)/Maui.Comercial.Pages/Testes/AgenteImpressaoTeste.razor.cs" DestinationFolder="$(MSBuildProjectDirectory)/Components\Testes" />
   </Target>
 </Project>

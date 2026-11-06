@@ -10,3 +10,6 @@ artifacts/
 # Generated sources/state of the isolated ERP integration test
 tests/ComercialFixture/Components/Testes/
 tests/ComercialFixture/state/
+
+# Generated from the external Comercial page styles
+tests/ComercialFixture/wwwroot/print-agent.css

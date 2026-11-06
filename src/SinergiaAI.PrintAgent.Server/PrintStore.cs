@@ -24,6 +24,7 @@ public sealed partial class PrintStore
             CREATE INDEX IF NOT EXISTS ix_jobs_pending ON jobs(installation_id,status,created_at);
             CREATE TABLE IF NOT EXISTS enrollments (code_hash TEXT PRIMARY KEY, protected_configuration TEXT NOT NULL, expires_at TEXT NOT NULL, consumed INTEGER NOT NULL DEFAULT 0);
             """);
+        EnsureDiscoveryTables();
     }
     public static string Hash(string value) => Convert.ToHexString(SHA256.HashData(Encoding.UTF8.GetBytes(value)));
     private static string Now() => DateTimeOffset.UtcNow.ToString("O");

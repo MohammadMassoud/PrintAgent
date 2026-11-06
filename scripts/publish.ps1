@@ -5,6 +5,13 @@ if ($BuildSetup -and (Test-Path -LiteralPath (Join-Path $root 'artifacts\agent\a
     throw 'O instalador publico nao pode conter appsettings.Local.json. Mova a configuracao personalizada para fora da pasta de publicacao.'
 }
 $output = Join-Path $root 'artifacts\agent'
+if (Test-Path -LiteralPath $output) {
+    $artifactsRoot = [IO.Path]::GetFullPath((Join-Path $root 'artifacts')) + [IO.Path]::DirectorySeparatorChar
+    $resolvedOutput = [IO.Path]::GetFullPath($output)
+    $archivedOutput = Join-Path $artifactsRoot ('agent-previous-' + [DateTime]::UtcNow.ToString('yyyyMMddHHmmssfff'))
+    if (-not $resolvedOutput.StartsWith($artifactsRoot, [StringComparison]::OrdinalIgnoreCase) -or -not $archivedOutput.StartsWith($artifactsRoot, [StringComparison]::OrdinalIgnoreCase)) { throw 'Invalid publishing directory.' }
+    Move-Item -LiteralPath $resolvedOutput -Destination $archivedOutput
+}
 & dotnet publish (Join-Path $root 'src\SinergiaAI.PrintAgent.Agent') -c Release -r win-x64 --self-contained true -o $output
 if ($LASTEXITCODE -ne 0) { throw 'Falha no publish.' }
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'install.ps1') -Destination $output -Force

@@ -2,10 +2,8 @@ namespace SinergiaAI.PrintAgent.Bootstrap
 {
     internal static class InstallerRelease
     {
-        internal const string Url = "https://www.sinergiaai.com/downloads/sinergiaprint/8fdce3afdedf675cbef81b0d9b4ceeb401023a1806f798c00634d7137c9b6021/SinergiaPrint-Setup.exe";
+        internal const string Url = "https://www.sinergiaai.com/downloads/sinergiaprint/07d4f047d211c60cea8ede97bd6fa7c5b0501a23f613ced92746fb7fc10fb5c0/SinergiaPrint-Setup.exe";
         // Pin the exact generic installer. Updating the installer requires rebuilding the bootstrap.
-        internal const string Sha256 = "8FDCE3AFDEDF675CBEF81B0D9B4CEEB401023A1806F798C00634D7137C9B6021";
+        internal const string Sha256 = "07D4F047D211C60CEA8EDE97BD6FA7C5B0501A23F613CED92746FB7FC10FB5C0";
     }
 }
-
-

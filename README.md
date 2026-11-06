@@ -18,9 +18,11 @@ Tela do aplicativo → Backend do seu projeto → Fila SQLite
                                              Impressora
 ```
 
-O agente consulta a API do seu projeto. A página não precisa abrir uma conexão JavaScript diretamente com a impressora ou com um servidor local. No Blazor WebAssembly, as chamadas devem passar pelo backend autenticado.
+O agente consulta a API do seu projeto para receber os trabalhos. O JavaScript no navegador consulta a ponte local apenas para identificar o agente naquele computador; os trabalhos passam pela fila do backend, sem impressão direta pelo navegador. No Blazor WebAssembly, as operações de backend devem passar por uma API autenticada.
 
 O site SinergiaAI hospeda o instalador. A API de impressão fica no backend do projeto que usará o agente.
+
+**Guia técnico completo:** [instalação, reconhecimento por máquina, versões, serviços, interfaces e integração Blazor](docs/funcionamento-e-integracao.md). O guia diferencia as APIs do NuGet público dos adaptadores específicos da biblioteca Common utilizada no Comercial.
 
 ## Requisitos
 
@@ -36,7 +38,7 @@ O pacote é destinado ao backend / Blazor Server. Não instale no projeto WebAss
 ## 1. Instalar o pacote no projeto
 
 ```powershell
-dotnet add package SinergiaAI.PrintAgent --version 0.2.0-preview.2
+dotnet add package SinergiaAI.PrintAgent --version 0.3.0-preview.1
 ```
 
 No Visual Studio, use **Gerenciar Pacotes NuGet → Procurar**, selecione **nuget.org** e marque **Incluir pré-lançamento** para localizar a versão preview.
@@ -91,7 +93,7 @@ No serviço do seu backend, injete `PrintStore` e `PrintEnrollmentService`. Depo
 var credentials = store.CreateInstallation("Computador da expedição");
 ```
 
-Guarde o `InstallationId` e associe-o ao usuário/empresa na sua aplicação. Guarde o `AgentToken` criptografado no servidor: o módulo armazena apenas seu hash e não consegue recuperar o token original.
+Guarde o `InstallationId` como identidade da instalação do computador. Aplique as permissões de usuários/empresa no backend, sem confundir o proprietário que criou o registro com a máquina reconhecida. Guarde o `AgentToken` criptografado no servidor: a autenticação armazena seu hash e não consegue recuperar o token original. `PrintDiscoveryService.RegisterMachine` oferece armazenamento protegido das credenciais e emissão de comprovante para a integração de descoberta descrita no guia técnico.
 
 Crie uma instalação uma vez por vínculo com o computador; reabrir a tela ou ficar offline não deve criar outra instalação automaticamente.
 
@@ -99,7 +101,7 @@ Ao clicar em **Instalar agente**, seu endpoint autenticado verifica a propriedad
 
 ```csharp
 // Trecho dentro do endpoint autorizado do seu aplicativo.
-// credentials são as credenciais da instalação pertencente ao usuário atual.
+// credentials são da instalação que o backend autorizou o usuário atual a acessar.
 var installer = enrollment.CreateInstaller(
     credentials,
     new Uri("https://seu-aplicativo.com/printing/"));
@@ -134,7 +136,7 @@ var connected = installation?.LastSeenAt is { } lastSeen
 var printers = installation?.Printers ?? Array.Empty<PrinterInfo>();
 ```
 
-A janela de 60 segundos é um critério da interface, não uma garantia de disponibilidade. O módulo não detecta diretamente se o agente está instalado no Windows: o último contato indica que ele está se comunicando. Sem contato, ele pode estar ausente, parado ou sem acesso à API.
+A janela de 60 segundos é um critério da interface, não uma garantia de disponibilidade. Esse trecho consulta o contato de uma instalação já identificada; sozinho, não descobre qual computador abriu a página. Para reconhecer o computador atual entre diferentes logins/navegadores, utilize a ponte local e `PrintDiscoveryService`, conforme o [guia técnico](docs/funcionamento-e-integracao.md). Sem resposta local, o serviço pode estar ausente, parado ou bloqueado pelo navegador; não deduza necessidade de atualização.
 
 Na sua interface, mostre a conexão, ofereça a instalação quando necessário e preencha o seletor com `printers`, usando `Name` como texto e `Id` como valor. O primeiro relatório ocorre ao iniciar o agente; a lista é atualizada aproximadamente a cada 30 segundos. Consulte o backend periodicamente, por exemplo a cada 5 segundos.
 

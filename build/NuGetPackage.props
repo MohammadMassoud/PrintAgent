@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <Version>0.2.0-preview.2</Version>
+    <Version>0.3.0-preview.1</Version>
     <Authors>MohammadMassoud</Authors>
     <Company>SinergiaAI</Company>
     <PackageProjectUrl>https://github.com/MohammadMassoud/PrintAgent</PackageProjectUrl>
@@ -10,7 +10,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>printing;printagent;raw;zpl;zebra;escpos;blazor;sinergiaai</PackageTags>
-    <PackageReleaseNotes>Unified package with SinergiaAI.PrintAgent namespaces, project and assembly names for Server, Client and Contracts, embedded Windows enrollment bootstrap, MIT license and public repository metadata. Replaces the three separate SinergiaPrint integration packages.</PackageReleaseNotes>
+    <PackageReleaseNotes>Machine discovery: loopback-only Windows agent bridge, expiring single-use challenges and browser machine proofs independent of application users. Includes the updated contextual Windows installer.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
   <ItemGroup>
