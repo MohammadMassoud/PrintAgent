@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/data/
+**/appsettings.Local.json
+**/appsettings.Development.json
+artifacts/
+*.db*
+.vs/
+
+# Generated sources/state of the isolated ERP integration test
+tests/ComercialFixture/Components/Testes/
+tests/ComercialFixture/state/

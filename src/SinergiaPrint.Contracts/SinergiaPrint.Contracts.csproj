@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <Import Project="../../build/NuGetPackage.props" />
+  <PropertyGroup>
+    <PackageId>SinergiaPrint.Contracts</PackageId>
+    <Description>Shared .NET contracts for SinergiaPrint printer discovery, raw print jobs, status reporting, and automatic agent enrollment.</Description>
+  </PropertyGroup>
+</Project>

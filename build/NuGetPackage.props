@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <IsPackable>true</IsPackable>
+    <Version>0.2.0-preview.1</Version>
+    <Authors>MohammadMassoud</Authors>
+    <PackageProjectUrl>https://www.sinergiaai.com/</PackageProjectUrl>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageTags>printing;print-agent;raw;zpl;escpos;blazor;sinergiaprint</PackageTags>
+    <PackageReleaseNotes>Initial preview: reusable printing contracts, HTTP client, embedded API, and automatic Windows installer enrollment.</PackageReleaseNotes>
+    <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="/" />
+  </ItemGroup>
+</Project>
