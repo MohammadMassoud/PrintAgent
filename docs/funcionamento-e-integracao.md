@@ -202,6 +202,8 @@ O agente não valida linguagem, não converte documentos e não garante que ZPL 
 
 Para remover o programa, use Aplicativos instalados do Windows, selecione **SinergiaPrint Agent** e desinstale com permissão administrativa. A página oferece um atalho para essa configuração, sem executar desinstalação silenciosa. Preserve dados necessários para auditoria/diagnóstico e planeje retenção do banco e diário.
 
+Após remover o vínculo, a tela apresenta **Vínculo removido deste navegador**, sem sugerir falha ou nova instalação. O reconhecimento automático fica suspenso nessa tela para permitir a desinstalação. Clique em **Reconhecer computador** para reconectar imediatamente; F5 também inicia a descoberta novamente se o serviço continua instalado.
+
 Persistir SQLite, as chaves de Data Protection e a identidade da aplicação é necessário para sobreviver a publicações. Não hospede dados/configurações no diretório público. A versão atual utiliza SQLite; múltiplas instâncias do backend e isolamento entre empresas precisam de planejamento próprio.
 
 Para diagnosticar: verifique o serviço em `services.msc`, a permissão local no navegador, a disponibilidade da API configurada, o HTTPS/certificado, a porta 17831 e a visibilidade da impressora para o serviço. Não coloque tokens em URLs, capturas ou logs públicos.

@@ -189,11 +189,16 @@ function pass(message){console.log('PASS '+message);}
  assert.equal((await page.request.get(base+'fixture/connection/'+iid,{headers:{'X-PrintAgent-Machine':proof}})).status(),200);
  await page.getByRole('button',{name:'Remover vínculo',exact:true}).click();
  await page.getByRole('button',{name:'Confirmar remoção',exact:true}).click();
- await page.getByText('Não foi possível reconhecer o agente',{exact:true}).waitFor();
+ await page.getByText('Vínculo removido deste navegador',{exact:true}).waitFor();
+ assert.equal(await page.getByText('Não foi possível reconhecer o agente',{exact:true}).count(),0);
+ assert.equal(await page.getByRole('button',{name:'Instalar agente',exact:true}).count(),0);
  assert.equal((await page.request.get(base+'fixture/connection/'+iid,{headers:{'X-PrintAgent-Machine':proof}})).status(),404);
  assert.equal((await page.request.get(base+'sinergiaprint/installers/'+iid)).status(),404);
  assert.equal(await page.getByRole('link',{name:'Abrir aplicativos do Windows'}).getAttribute('href'),'ms-settings:appsfeatures');
  assert.equal(sql('select count(*) from jobs')[0][0],1006);
+ await page.getByRole('button',{name:'Reconhecer computador',exact:true}).click();
+ await page.getByText('Agente conectado',{exact:true}).waitFor({timeout:60000});
+ assert.equal(sql('select count(*) from installations')[0][0],1);
  await page.reload();await page.getByText('Agente conectado',{exact:true}).waitFor({timeout:60000});
  await otherContext.close();
  pass('Forget-browser confirmation supports cancel, revokes its proof and retains queue; installed service is discovered again on reload');
