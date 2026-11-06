@@ -18,7 +18,7 @@
     <Compile Include="Components\Testes/AgenteImpressaoTeste.razor.cs" />
     <Compile Include="Components\Testes/IAgenteImpressaoTesteService.cs" />
     <Compile Include="$(ComercialRoot)/Maui.Comercial/Services/AgenteImpressaoTesteService.cs" Link="Services/AgenteImpressaoTesteService.cs" />
-    <Compile Include="$(ComercialRoot)/Maui.Comercial/Services/SinergiaPrintTestEndpoints.cs" Link="Services/SinergiaPrintTestEndpoints.cs" />
+    <Compile Include="$(ComercialRoot)/Maui.Comercial/Services/AgenteImpressaoTesteEndpoints.cs" Link="Services/AgenteImpressaoTesteEndpoints.cs" />
   </ItemGroup>
   <Target Name="CopyComercialFixtureSources" BeforeTargets="PrepareForBuild">
     <MakeDir Directories="$(MSBuildProjectDirectory)/Components\Testes" />
