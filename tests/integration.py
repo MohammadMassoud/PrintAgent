@@ -16,7 +16,7 @@ PORT=port();BASE=f'http://127.0.0.1:{PORT}/'
 DB=WORK/'printing.db'
 def start_api():
     env=os.environ.copy();env.update({'ASPNETCORE_URLS':BASE,'Printing__ApiKey':KEY,'Printing__DatabasePath':str(DB)})
-    return start(['dotnet',str(ROOT/'src/SinergiaPrint.Api/bin/Debug/net10.0/SinergiaPrint.Api.dll')],env,'api')
+    return start(['dotnet',str(ROOT/'src/SinergiaAI.PrintAgent.Api/bin/Debug/net10.0/SinergiaAI.PrintAgent.Api.dll')],env,'api')
 def start(args,env,name):
     log=open(WORK/(name+'-'+uuid.uuid4().hex[:6]+'.log'),'w');handles.append(log)
     proc=subprocess.Popen(args,cwd=ROOT,env=env,stdout=log,stderr=subprocess.STDOUT);processes.append(proc);return proc
@@ -78,7 +78,7 @@ try:
                 received.append(b''.join(chunks))
     thread=threading.Thread(target=receiver,daemon=True);thread.start();ready.wait(3)
     env=os.environ.copy();env.update({'SINERGIAPRINT_Agent__ApiBaseUrl':BASE,'SINERGIAPRINT_Agent__InstallationId':iid,'SINERGIAPRINT_Agent__Token':token,'SINERGIAPRINT_Agent__DataPath':str(WORK/'agent'),'SINERGIAPRINT_Agent__PollSeconds':'1','SINERGIAPRINT_Agent__NetworkPrinters__0__Name':'TCP Test','SINERGIAPRINT_Agent__NetworkPrinters__0__Address':f'tcp://127.0.0.1:{TCP}'})
-    def start_agent():return start(['dotnet',str(ROOT/'src/SinergiaPrint.Agent/bin/Debug/net10.0-windows/win-x64/SinergiaPrint.Agent.dll')],env,'agent')
+    def start_agent():return start(['dotnet',str(ROOT/'src/SinergiaAI.PrintAgent.Agent/bin/Debug/net10.0-windows/win-x64/SinergiaAI.PrintAgent.Agent.dll')],env,'agent')
     worker=start_agent()
     printers=wait(lambda:call(f'api/installations/{iid}/printers')[1])
     printer=next(p['id'] for p in printers if p['name']=='TCP Test')

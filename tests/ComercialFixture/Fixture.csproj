@@ -5,7 +5,8 @@
     <DefaultItemExcludes>$(DefaultItemExcludes);Components\Testes/**</DefaultItemExcludes>
   </PropertyGroup>
   <ItemGroup>
-    <ProjectReference Include="../../src/SinergiaPrint.Server/SinergiaPrint.Server.csproj" />
+    <ProjectReference Include="../../src/SinergiaAI.PrintAgent.Server/SinergiaAI.PrintAgent.Server.csproj" />
+    <ProjectReference Include="../../src/SinergiaAI.PrintAgent.Contracts/SinergiaAI.PrintAgent.Contracts.csproj" />
     <PackageReference Include="Syncfusion.Blazor.Grid" Version="35.1.40" />
     <PackageReference Include="Syncfusion.Blazor.DropDowns" Version="35.1.40" />
     <PackageReference Include="Syncfusion.Blazor.Inputs" Version="35.1.40" />

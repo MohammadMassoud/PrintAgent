@@ -11,7 +11,7 @@ staging.mkdir(parents=True)
 # Inno's preparation step extracts only this script, before copying the agent executable.
 # Validate directly from scripts/ to cover that staging case without installing anything.
 script = root / 'scripts/install.ps1'
-assert not (script.parent / 'SinergiaPrint.Agent.exe').exists()
+assert not (script.parent / 'SinergiaAI.PrintAgent.Agent.exe').exists()
 valid = {'Agent': {'ApiBaseUrl': 'https://printing.example.com/', 'InstallationId': str(uuid.uuid4()), 'Token': 'test-token'}}
 cases = [('HTTPS', valid, True)]
 for url, expected in [('http://localhost:5189/', True), ('http://127.0.0.1:5189/', True), ('http://[::1]:5189/', True), ('http://printing.example.com/', False), ('http://localhost.evil.example/', False), ('file:///C:/bad', False), ('invalid-url', False)]:

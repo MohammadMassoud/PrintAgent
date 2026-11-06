@@ -58,7 +58,7 @@ function resolveOnly(file, destination, expected=0) {
  const genericInstaller=path.join(work,'generic-installer.exe');
  const asset=spawnSync(file,['--download-only',genericInstaller],{windowsHide:true,timeout:180000});
  if(asset.status!==0)throw new Error('Public installer download failed: '+(fs.existsSync(genericInstaller+'.error')?fs.readFileSync(genericInstaller+'.error','utf8'):String(asset.error||'')));
- const expectedHash=fs.readFileSync(path.join(root,'src/SinergiaPrint.Bootstrap/InstallerRelease.cs'),'utf8').match(/Sha256 = "([A-F0-9]{64})"/)[1];
+ const expectedHash=fs.readFileSync(path.join(root,'src/SinergiaAI.PrintAgent.Bootstrap/InstallerRelease.cs'),'utf8').match(/Sha256 = "([A-F0-9]{64})"/)[1];
  assert.equal(crypto.createHash('sha256').update(fs.readFileSync(genericInstaller)).digest('hex').toUpperCase(),expectedHash);
  console.log('PASS Windows bootstrap downloads and verifies the exact public installer without installing it');
  const redeem=code=>fetch(base+'sinergiaprint/enrollment/redeem',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({code})});
@@ -86,7 +86,7 @@ function resolveOnly(file, destination, expected=0) {
  const storage=await page.evaluate(()=>Object.values(localStorage));assert.ok(storage.every(v=>!v.includes(token)));
  console.log('PASS Permanent token is protected on server and absent from the EXE and browser storage');
  const received=[];receiver=net.createServer(socket=>{const chunks=[];socket.on('data',b=>chunks.push(b));socket.on('end',()=>received.push(Buffer.concat(chunks)));});receiver.listen(0,'127.0.0.1');await once(receiver,'listening');
- const agent=start([path.join(root,'src/SinergiaPrint.Agent/bin/Debug/net10.0-windows/win-x64/SinergiaPrint.Agent.dll')],{
+ const agent=start([path.join(root,'src/SinergiaAI.PrintAgent.Agent/bin/Debug/net10.0-windows/win-x64/SinergiaAI.PrintAgent.Agent.dll')],{
   SINERGIAPRINT_Agent__ApiBaseUrl:config.Agent.ApiBaseUrl,SINERGIAPRINT_Agent__InstallationId:iid,SINERGIAPRINT_Agent__Token:config.Agent.Token,
   SINERGIAPRINT_Agent__DataPath:path.join(work,'agent'),SINERGIAPRINT_Agent__PollSeconds:'1',
   SINERGIAPRINT_Agent__NetworkPrinters__0__Name:'Zebra simulada TCP',SINERGIAPRINT_Agent__NetworkPrinters__0__Address:`tcp://127.0.0.1:${receiver.address().port}`},'agent.log');

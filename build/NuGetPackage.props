@@ -1,15 +1,20 @@
 <Project>
   <PropertyGroup>
-    <IsPackable>true</IsPackable>
-    <Version>0.2.0-preview.1</Version>
+    <IsPackable>false</IsPackable>
+    <Version>0.2.0-preview.2</Version>
     <Authors>MohammadMassoud</Authors>
-    <PackageProjectUrl>https://www.sinergiaai.com/</PackageProjectUrl>
+    <Company>SinergiaAI</Company>
+    <PackageProjectUrl>https://github.com/MohammadMassoud/PrintAgent</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/MohammadMassoud/PrintAgent.git</RepositoryUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
-    <PackageTags>printing;print-agent;raw;zpl;escpos;blazor;sinergiaprint</PackageTags>
-    <PackageReleaseNotes>Initial preview: reusable printing contracts, HTTP client, embedded API, and automatic Windows installer enrollment.</PackageReleaseNotes>
+    <PackageTags>printing;printagent;raw;zpl;zebra;escpos;blazor;sinergiaai</PackageTags>
+    <PackageReleaseNotes>Unified package with SinergiaAI.PrintAgent namespaces, project and assembly names for Server, Client and Contracts, embedded Windows enrollment bootstrap, MIT license and public repository metadata. Replaces the three separate SinergiaPrint integration packages.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildThisFileDirectory)../LICENSE" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>

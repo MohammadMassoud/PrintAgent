@@ -1,0 +1,13 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/IntegrationDemo/IntegrationDemo.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/SinergiaAI.PrintAgent.Agent/SinergiaAI.PrintAgent.Agent.csproj" />
+    <Project Path="src/SinergiaAI.PrintAgent.Api/SinergiaAI.PrintAgent.Api.csproj" />
+    <Project Path="src/SinergiaAI.PrintAgent.Bootstrap/SinergiaAI.PrintAgent.Bootstrap.csproj" />
+    <Project Path="src/SinergiaAI.PrintAgent.Client/SinergiaAI.PrintAgent.Client.csproj" />
+    <Project Path="src/SinergiaAI.PrintAgent.Contracts/SinergiaAI.PrintAgent.Contracts.csproj" />
+    <Project Path="src/SinergiaAI.PrintAgent.Server/SinergiaAI.PrintAgent.Server.csproj" />
+  </Folder>
+</Solution>

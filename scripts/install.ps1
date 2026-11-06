@@ -1,4 +1,4 @@
-﻿param(
+param(
     [string]$ApiBaseUrl = '',
     [string]$InstallationId = '',
     [string]$AgentToken = '',
@@ -14,7 +14,7 @@ $installPath = Join-Path $env:ProgramFiles 'SinergiaPrint'
 $dataPath = Join-Path $env:ProgramData 'SinergiaPrint'
 $configPath = Join-Path $dataPath 'appsettings.Local.json'
 $sourceConfig = Join-Path $PSScriptRoot 'appsettings.Local.json'
-if (-not ($ValidateOnly -or $PrepareOnly) -and -not (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'SinergiaPrint.Agent.exe'))) { throw 'Executavel nao encontrado. Use o pacote publicado.' }
+if (-not ($ValidateOnly -or $PrepareOnly) -and -not (Test-Path -LiteralPath (Join-Path $PSScriptRoot 'SinergiaAI.PrintAgent.Agent.exe'))) { throw 'Executavel nao encontrado. Use o pacote publicado.' }
 if ($ConfigurationFile) {
     $config = Get-Content -LiteralPath $ConfigurationFile -Raw | ConvertFrom-Json
 }
@@ -55,7 +55,7 @@ function Invoke-Sc([string[]]$ScArguments) {
     & sc.exe @ScArguments | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Falha ao configurar servico Windows.' }
 }
-$exePath = Join-Path $installPath 'SinergiaPrint.Agent.exe'
+$exePath = Join-Path $installPath 'SinergiaAI.PrintAgent.Agent.exe'
 if ($service) { Invoke-Sc -ScArguments @('config',$serviceName,'binPath=',"`"$exePath`"",'start=','delayed-auto') }
 else { Invoke-Sc -ScArguments @('create',$serviceName,'binPath=',"`"$exePath`"",'start=','delayed-auto') }
 Invoke-Sc -ScArguments @('failure',$serviceName,'reset=','86400','actions=','restart/5000/restart/15000/restart/30000')
