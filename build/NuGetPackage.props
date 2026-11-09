@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <Version>0.5.0</Version>
+    <Version>0.6.0</Version>
     <Authors>MohammadMassoud</Authors>
     <Company>SinergiaAI</Company>
     <PackageProjectUrl>https://github.com/MohammadMassoud/PrintAgent</PackageProjectUrl>
@@ -10,7 +10,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageTags>printing;printagent;raw;zpl;zebra;escpos;blazor;sinergiaai</PackageTags>
-    <PackageReleaseNotes>Long polling: authenticated claims wait asynchronously up to 20 seconds, notified after enqueue/ack commits without holding SQLite connections. Windows agent 0.4.0 renews idle waits immediately, falls back safely on older APIs, and reconnects with exponential backoff and jitter. Update backend and Windows agent to reduce idle requests.</PackageReleaseNotes>
+    <PackageReleaseNotes>Machine-wide, multi-application printing with Windows agent 0.5.0. Applications enroll automatically through the authenticated backend; one service runs independent durable queues without replacing existing connections. Generic installation requires no API URL, GUID or token. Existing configuration and journals are preserved. Long polling remains enabled.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
   <ItemGroup>

@@ -28,7 +28,7 @@ Open the same address. If no compatible service is recognized, click **Download 
 
 Select a printer that accepts the chosen RAW format. ZPL requires a ZPL-capable printer; ESC/POS requires an ESC/POS-capable printer. The agent does not validate the language. Submitted jobs may produce physical output.
 
-One service connects to one backend. If the installed service already targets another application, use simulation or a separate computer rather than replacing production configuration. Keep the demo running while testing: its API exists only while the process is active.
+Windows agent 0.5.0 can serve this demo alongside other integrated applications without replacing their connections. Older agents require an upgrade to support multiple applications. Keep the demo running while testing: its API exists only while the process is active. Simulation remains available without changing the installed service.
 
 ## Configuration
 
@@ -63,6 +63,9 @@ Optional, with Node.js and Playwright:
 npm install --prefix artifacts/browser-tools playwright
 npx --prefix artifacts/browser-tools playwright install chromium
 node tests/demo.browser.cjs
+node tests/multi_application.browser.cjs
 ```
 
 The check submits only to the simulated destination, verifies retries across reloads, and captures desktop and mobile screenshots under `artifacts/`.
+
+The multi-application check starts one unconfigured console agent and two independent hosts. It verifies automatic enrollment, another user in a fresh browser profile, separate credentials, restart persistence, retry safety and printing while the other host is offline. It uses only a simulated TCP destination.

@@ -6,17 +6,24 @@ namespace SinergiaAI.PrintAgent.Agent;
 
 public sealed class WindowsRawReceiptPrinter
 {
-    public Task PrintAsync(string printerName, byte[] payload, CancellationToken ct)
+    private readonly System.Collections.Concurrent.ConcurrentDictionary<string, SemaphoreSlim> _destinations = new(StringComparer.OrdinalIgnoreCase);
+
+    public async Task PrintAsync(string printerName, byte[] payload, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(printerName))
             throw new InvalidOperationException("A Windows printer name is required.");
 
         ct.ThrowIfCancellationRequested();
-        if (TryParseTcpEndpoint(printerName, out var host, out var port))
-            return PrintTcpAsync(host, port, payload, ct);
-
-        RawPrinterHelper.SendBytesToPrinter(printerName, payload);
-        return Task.CompletedTask;
+        // Applications have independent queues, but writes to the same destination must not overlap.
+        var gate = _destinations.GetOrAdd(printerName, _ => new(1, 1));
+        await gate.WaitAsync(ct);
+        try
+        {
+            if (TryParseTcpEndpoint(printerName, out var host, out var port))
+                await PrintTcpAsync(host, port, payload, ct);
+            else RawPrinterHelper.SendBytesToPrinter(printerName, payload);
+        }
+        finally { gate.Release(); }
     }
 
     private static async Task PrintTcpAsync(string host, int port, byte[] payload, CancellationToken ct)

@@ -1,6 +1,6 @@
 # Release guide
 
-PrintAgent is distributed as the `SinergiaAI.PrintAgent` NuGet package and a separate Windows installer. The integration package version is **0.5.0**; the Windows agent version is **0.4.0**. Upgrade both to enable long polling.
+PrintAgent is distributed as the `SinergiaAI.PrintAgent` NuGet package and a separate Windows installer. The integration package version is **0.6.0**; the Windows agent version is **0.5.0**. Upgrade both to enable automatic multi-application enrollment. Long polling remains supported.
 
 ## Build and verify
 
@@ -32,7 +32,7 @@ Publish the exact installer at the pinned URL before releasing NuGet. Verify the
 python tests/package_integration.py
 ```
 
-Output: `artifacts/nuget-unified/SinergiaAI.PrintAgent.0.5.0.nupkg`.
+Output: `artifacts/nuget-unified/SinergiaAI.PrintAgent.0.6.0.nupkg`.
 
 The package contains Server, Client and Contracts assemblies, embedded browser discovery and installer bootstrap, English README and MIT license. NuGet restores third-party dependencies. It excludes demo data, credentials and application-specific libraries.
 
@@ -50,12 +50,12 @@ The package version is in `build/NuGetPackage.props`. Agent and installer versio
 2. Select the new package and review ID, version, license, dependencies, repository and README.
 3. Submit and wait for validation and search indexing.
 
-Published versions are immutable. A local build is not publication. A GitHub README edit does not change a published package. Stable `0.5.0` does not require enabling prerelease packages in Visual Studio.
+Published versions are immutable. A local build is not publication. A GitHub README edit does not change a published package. Stable `0.6.0` does not require enabling prerelease packages in Visual Studio.
 
 ## Upgrade
 
 ```shell
-dotnet add package SinergiaAI.PrintAgent --version 0.5.0
+dotnet add package SinergiaAI.PrintAgent --version 0.6.0
 ```
 
 Preserve API prefix, data directory, Data Protection keys and connection identifiers. Older agents remain compatible but retain their polling interval until updated. See the [integration guide](integration.md).

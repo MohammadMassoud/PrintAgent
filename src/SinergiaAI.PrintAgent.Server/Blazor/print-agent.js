@@ -1,4 +1,4 @@
-// Browser bridge. The Windows service only proves its installation; no permanent agent token enters this module.
+// Browser bridge. Application enrollment is automatic; no permanent agent token enters this module.
 export async function discover(options, existingProof = null) {
     const bridge = options.bridgeUrl;
     const local = { mode: 'cors', credentials: 'omit', cache: 'no-store', targetAddressSpace: 'loopback' };
@@ -19,11 +19,21 @@ export async function discover(options, existingProof = null) {
         const challengeResponse = await fetch(options.browserApiBaseUrl + 'machine/challenge', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(10000) });
         if (!challengeResponse.ok) throw new Error('Could not start machine recognition. Sign in again.');
         const challenge = (await challengeResponse.json()).challenge;
-        const connected = await fetch(bridge + '/connect', {
+        const connect = enrollmentCode => fetch(bridge + '/connect', {
             ...local, method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ apiBaseUrl: options.agentApiBaseUrl, challenge }), signal: AbortSignal.timeout(18000)
+            body: JSON.stringify({ apiBaseUrl: options.agentApiBaseUrl, challenge, enrollmentCode }), signal: AbortSignal.timeout(30000)
         });
-        if (connected.status === 409) return { status: 'other-application', version, error: 'The agent on this computer is connected to another application.' };
+        let connected = await connect(null);
+        if (connected.status === 428) {
+            const enrollment = await fetch(options.browserApiBaseUrl + 'machine/enrollment', {
+                credentials: 'same-origin', cache: 'no-store', method: 'POST',
+                headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enroll: true }),
+                signal: AbortSignal.timeout(10000)
+            });
+            if (!enrollment.ok) throw new Error('Could not authorize this application. Sign in and check your printing permissions.');
+            connected = await connect((await enrollment.json()).code);
+        }
+        if (connected.status === 409) return { status: 'other-application', version, error: 'This installed agent supports only one application. Update it to enable multiple applications on this computer.' };
         if (connected.status === 403) return { status: 'origin-denied', version, error: 'The local service rejected this application origin. Check the API URL configured in the agent.' };
         if (!connected.ok) throw new Error('The local service was found but could not confirm its connection with this application.');
         const proofResponse = await fetch(options.browserApiBaseUrl + 'machine/proof', {

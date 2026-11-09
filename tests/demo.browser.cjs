@@ -7,6 +7,7 @@ const { spawn, spawnSync } = require('node:child_process');
 const { once } = require('node:events');
 const { randomUUID } = require('node:crypto');
 const root = path.resolve(__dirname, '..');
+const configuration = process.env.PRINTAGENT_TEST_CONFIGURATION || 'Debug';
 const { chromium } = require(process.env.PLAYWRIGHT_MODULE || path.join(root, 'artifacts/browser-tools/node_modules/playwright'));
 const work = path.join(root, 'artifacts', 'demo-browser-' + randomUUID());
 fs.mkdirSync(work, { recursive: true });
@@ -26,7 +27,7 @@ async function wait(fn, seconds = 30) {
 }
 (async () => {
     const base = `http://127.0.0.1:${await port()}/`;
-    host = spawn('dotnet', ['run', '--project', 'samples/PrintAgent.Demo', '--no-build', '--no-launch-profile', '--', '--simulate',
+    host = spawn('dotnet', ['run', '--project', 'samples/PrintAgent.Demo', '-c', configuration, '--no-build', '--no-launch-profile', '--', '--simulate',
         '--urls', base, '--Demo:DataDirectory', path.join(work, 'data'), '--Demo:BridgePort', String(await port())],
         { cwd: root, windowsHide: true, env: { ...process.env, ASPNETCORE_ENVIRONMENT: 'Development' }, stdio: ['ignore', log, log] });
     await wait(async () => (await fetch(base + 'health')).ok);

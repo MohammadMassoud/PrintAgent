@@ -46,6 +46,16 @@ public static class PrintAgentExtensions
             context.Response.Headers.CacheControl = "no-store";
             return Results.Ok(new { challenge = discovery.CreateChallenge() });
         }).RequireAuthorization();
+        endpoints.MapPost(prefix + "/machine/enrollment", IResult (
+            ApplicationEnrollmentRequest request, HttpContext context, PrintAgentBackend service, CancellationToken ct) =>
+        {
+            // A JSON body forces a CORS preflight on cross-origin requests; no form-based enrollment.
+            if (!request.Enroll) return Results.BadRequest();
+            context.Response.Headers.CacheControl = "no-store";
+            var http = context.Request;
+            var application = new Uri($"{http.Scheme}://{http.Host}{http.PathBase}/");
+            return Results.Ok(service.CreateApplicationEnrollment(application, context.User, ct));
+        }).RequireAuthorization();
         endpoints.MapGet(prefix + "/machine/proof", (HttpContext context, PrintDiscoveryService discovery) =>
         {
             context.Response.Headers.CacheControl = "no-store";
@@ -71,4 +81,6 @@ public static class PrintAgentExtensions
         }).RequireAuthorization();
         return endpoints;
     }
+
+    private sealed record ApplicationEnrollmentRequest(bool Enroll);
 }

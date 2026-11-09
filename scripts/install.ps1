@@ -25,16 +25,18 @@ elseif ($InstallationId -or $AgentToken -or $ApiBaseUrl) {
 elseif (Test-Path -LiteralPath $sourceConfig) { $config = Get-Content -LiteralPath $sourceConfig -Raw | ConvertFrom-Json }
 elseif (Test-Path -LiteralPath $configPath) { $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json }
 else {
-    $ApiBaseUrl = Read-Host 'Printing API URL (https://...)'
-    $InstallationId = Read-Host 'Installation ID'
-    $secureToken = Read-Host 'Agent token' -AsSecureString
-    $AgentToken = [Net.NetworkCredential]::new('', $secureToken).Password
-    $config = @{Agent=@{ApiBaseUrl=$ApiBaseUrl;InstallationId=$InstallationId;Token=$AgentToken;NetworkPrinters=@()}}
+    # Applications enroll automatically after installation; no manual credentials are required.
+    $config = @{Agent=@{ApiBaseUrl='';InstallationId=[Guid]::Empty.ToString();Token='';NetworkPrinters=@()}}
 }
 $agentConfig = $config.Agent
-$uri = [Uri]$agentConfig.ApiBaseUrl
-if (-not $uri.IsAbsoluteUri -or ($uri.Scheme -ne 'https' -and -not ($uri.Scheme -eq 'http' -and $uri.IsLoopback))) { throw 'Use HTTPS; HTTP is allowed only on loopback.' }
-if ([Guid]$agentConfig.InstallationId -eq [Guid]::Empty -or [string]::IsNullOrWhiteSpace([string]$agentConfig.Token)) { throw 'Invalid credentials.' }
+$hasApplication = -not [string]::IsNullOrWhiteSpace([string]$agentConfig.ApiBaseUrl) -or
+    -not [string]::IsNullOrWhiteSpace([string]$agentConfig.Token) -or
+    (-not [string]::IsNullOrWhiteSpace([string]$agentConfig.InstallationId) -and [string]$agentConfig.InstallationId -ne [Guid]::Empty.ToString())
+if ($hasApplication) {
+    $uri = [Uri]$agentConfig.ApiBaseUrl
+    if (-not $uri.IsAbsoluteUri -or ($uri.Scheme -ne 'https' -and -not ($uri.Scheme -eq 'http' -and $uri.IsLoopback))) { throw 'Use HTTPS; HTTP is allowed only on loopback.' }
+    if ([Guid]$agentConfig.InstallationId -eq [Guid]::Empty -or [string]::IsNullOrWhiteSpace([string]$agentConfig.Token)) { throw 'Invalid credentials.' }
+}
 if ($ValidateOnly) { return }
 $service = Get-Service -Name $serviceName -ErrorAction SilentlyContinue
 if ($service -and $service.Status -ne 'Stopped') {
@@ -50,7 +52,10 @@ if ($LASTEXITCODE -ne 0) { throw 'Could not secure the configuration directory.'
 if ([IO.Path]::GetFullPath($PSScriptRoot).TrimEnd('\') -ine [IO.Path]::GetFullPath($installPath).TrimEnd('\')) {
     Get-ChildItem -LiteralPath $PSScriptRoot | Where-Object { $_.Name -ne 'appsettings.Local.json' } | ForEach-Object { Copy-Item -LiteralPath $_.FullName -Destination $installPath -Recurse -Force }
 }
-$config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $configPath -Encoding UTF8
+# An upgrade from a different application's page preserves the original connection and journal.
+if (-not (Test-Path -LiteralPath $configPath)) {
+    $config | ConvertTo-Json -Depth 10 | Set-Content -LiteralPath $configPath -Encoding UTF8
+}
 function Invoke-Sc([string[]]$ScArguments) {
     & sc.exe @ScArguments | Out-Null
     if ($LASTEXITCODE -ne 0) { throw 'Could not configure the Windows service.' }

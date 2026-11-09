@@ -14,10 +14,13 @@ public sealed class PrintEnrollmentService(PrintStore store, IDataProtectionProv
     private readonly IDataProtector _protector = protection.CreateProtector("SinergiaPrint.Enrollment.v1");
 
     public byte[] CreateInstaller(InstallationCredentials credentials, Uri apiBaseUrl)
+        => BuildInstaller(CreateCode(credentials, apiBaseUrl));
+
+    public InstallerContext CreateCode(InstallationCredentials credentials, Uri apiBaseUrl)
     {
         if ((apiBaseUrl.Scheme != "https" && !(apiBaseUrl.Scheme == "http" && apiBaseUrl.IsLoopback)) ||
             apiBaseUrl.UserInfo.Length != 0 || apiBaseUrl.Query.Length != 0 || apiBaseUrl.Fragment.Length != 0)
-            throw new ArgumentException("A API deve usar HTTPS (HTTP somente para localhost), sem credenciais na URL.");
+            throw new ArgumentException("Use HTTPS (HTTP only on loopback), without credentials in the API URL.");
         if (!store.Authenticate(credentials.InstallationId, credentials.AgentToken))
             throw new UnauthorizedAccessException("Invalid installation.");
         var api = apiBaseUrl.AbsoluteUri.TrimEnd('/') + "/";
@@ -25,7 +28,7 @@ public sealed class PrintEnrollmentService(PrintStore store, IDataProtectionProv
         var expiry = DateTimeOffset.UtcNow.AddMinutes(30);
         var configuration = new AgentSetupConfiguration(api, credentials.InstallationId, credentials.AgentToken);
         store.SaveEnrollment(PrintStore.Hash(code), _protector.Protect(JsonSerializer.Serialize(configuration, Json)), expiry);
-        return BuildInstaller(new(api, code, expiry));
+        return new(api, code, expiry);
     }
 
     public AgentSetupConfiguration? Redeem(string? code)

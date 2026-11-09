@@ -5,6 +5,8 @@
 **/appsettings.Development.json
 artifacts/
 *.db*
+**/applications.json
+**/agent-*.lock
 .vs/
 **/.demo-data/
 

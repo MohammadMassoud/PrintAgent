@@ -14,6 +14,7 @@ script = root / 'scripts/install.ps1'
 assert not (script.parent / 'SinergiaAI.PrintAgent.Agent.exe').exists()
 valid = {'Agent': {'ApiBaseUrl': 'https://printing.example.com/', 'InstallationId': str(uuid.uuid4()), 'Token': 'test-token'}}
 cases = [('HTTPS', valid, True)]
+cases.append(('Unconfigured machine-wide installation', {'Agent': {'ApiBaseUrl': '', 'InstallationId': str(uuid.UUID(int=0)), 'Token': '', 'NetworkPrinters': []}}, True))
 for url, expected in [('http://localhost:5189/', True), ('http://127.0.0.1:5189/', True), ('http://[::1]:5189/', True), ('http://printing.example.com/', False), ('http://localhost.evil.example/', False), ('file:///C:/bad', False), ('invalid-url', False)]:
     config = copy.deepcopy(valid)
     config['Agent']['ApiBaseUrl'] = url

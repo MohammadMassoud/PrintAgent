@@ -76,7 +76,16 @@ internal sealed class PrintAgentBackend(
         GetApiUrl(application).AbsoluteUri,
         "http://127.0.0.1:" + Options.LocalBridgePort);
 
-    public string GetBrowserModuleUrl(Uri application) => new Uri(application, ApiPrefix + "/browser.js?v=4").AbsoluteUri;
+    public string GetBrowserModuleUrl(Uri application) => new Uri(application, ApiPrefix + "/browser.js?v=6").AbsoluteUri;
+
+    public InstallerContext CreateApplicationEnrollment(Uri application, ClaimsPrincipal user, CancellationToken ct)
+    {
+        if (user.Identity?.IsAuthenticated != true || string.IsNullOrWhiteSpace(user.FindFirstValue(ClaimTypes.NameIdentifier)))
+            throw new UnauthorizedAccessException();
+        ct.ThrowIfCancellationRequested();
+        var credentials = store.CreateInstallation("Local workstation");
+        return enrollment.CreateCode(credentials, GetApiUrl(application));
+    }
 
     private MachineConnectionState? Connection(string? proof)
     {

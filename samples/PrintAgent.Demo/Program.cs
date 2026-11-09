@@ -46,10 +46,13 @@ app.UseAntiforgery();
 app.MapStaticAssets();
 app.MapGet("/demo/sign-in", async (HttpContext context) =>
 {
+    var user = context.Request.Query["user"].ToString();
+    if (string.IsNullOrWhiteSpace(user)) user = "local-demo";
+    if (user.Length > 64) return Results.BadRequest();
     var identity = new ClaimsIdentity(new[]
     {
-        new Claim(ClaimTypes.NameIdentifier, "local-demo"),
-        new Claim(ClaimTypes.Name, "Local demo user")
+        new Claim(ClaimTypes.NameIdentifier, user),
+        new Claim(ClaimTypes.Name, user)
     }, CookieAuthenticationDefaults.AuthenticationScheme);
     await context.SignInAsync(new ClaimsPrincipal(identity));
     return Results.LocalRedirect("/");

@@ -14,7 +14,7 @@ public sealed class AgentWorker(AgentOptions options, IHttpClientFactory clients
     private DateTimeOffset _lastReport = DateTimeOffset.MinValue;
     protected override async Task ExecuteAsync(CancellationToken stoppingToken)
     {
-        var http = clients.CreateClient("api");
+        using var http = clients.CreateClient("api");
         var failures = 0;
         bool? previousSupport = null;
         while (!stoppingToken.IsCancellationRequested)

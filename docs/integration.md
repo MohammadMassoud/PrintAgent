@@ -14,7 +14,7 @@ The download website distributes installers only. The printing API runs in the a
 
 ## Register the integration
 
-Install `SinergiaAI.PrintAgent` version `0.5.0` in the backend and in any component library that uses its public types. Non-Web SDK projects require `<FrameworkReference Include="Microsoft.AspNetCore.App" />`. This integration targets .NET 10 and Blazor Server, including interactive server components in Blazor Web Apps.
+Install `SinergiaAI.PrintAgent` version `0.6.0` in the backend and in any component library that uses its public types. Non-Web SDK projects require `<FrameworkReference Include="Microsoft.AspNetCore.App" />`. This integration targets .NET 10 and Blazor Server, including interactive server components in Blazor Web Apps.
 
 ```csharp
 using SinergiaAI.PrintAgent;
@@ -75,7 +75,11 @@ RAW content is not converted or validated. Choose the correct printer and comman
 
 The Windows service listens on loopback at `127.0.0.1:17831` by default. It is not exposed on the LAN. The port is configurable, but `PrintAgentOptions.LocalBridgePort` and the service's `Agent:LocalBridgePort` must agree.
 
-The browser obtains an authenticated backend challenge, contacts the bridge, then redeems the result at the backend. The backend validates that the service belongs to its API and issues an opaque machine proof. The permanent service credential never enters browser storage.
+The browser obtains an authenticated backend challenge, contacts the bridge, then redeems the result at the backend. For a new application, the bridge requests enrollment. The authenticated backend issues a single-use code, which the service redeems directly to obtain application-specific credentials. The service saves that connection and starts a separate worker, then confirms the challenge. The browser receives an opaque machine proof, never the permanent service token.
+
+The same Windows installation serves multiple applications simultaneously. Profiles are machine-wide and stored under `ProgramData\SinergiaPrint\applications.json`, in the directory restricted by the installer to LocalSystem and Administrators. Each application has independent credentials, queue and journal. New profiles use separate journal directories; the original installation keeps its previous journal path. Writes to a shared printer are serialized within the service.
+
+The bridge accepts HTTPS application origins and HTTP loopback origins for local development. Enrollment and confirmation must target the requesting origin's API; distinct loopback ports are allowed for development. Host a remote API under the application's origin, for example through a reverse proxy. Browser local-network permission still applies. Printing authorization belongs to each backend. The current limit is 32 application profiles per computer. An unavailable application's worker reconnects independently without blocking others.
 
 Browser JavaScript is necessary in Blazor Server because server-side C# executes on the application server. Its `127.0.0.1` refers to that server, while browser JavaScript can reach the workstation's loopback service. The module is embedded in the package and served by `MapPrintAgent`; consumers do not copy it.
 
@@ -85,9 +89,9 @@ Recognition is associated with the installation, not the signed-in application u
 
 `DownloadInstallerAsync` creates a contextual EXE with a single-use enrollment code valid for 30 minutes. It does not expose a permanent token in a download query string. When run, the bootstrap redeems configuration, downloads the exact installer pinned by the package, verifies SHA-256, and requests administrator approval. The installer writes the machine configuration and starts the Windows service.
 
-The service runs in the background independently of the application login and browser. It resumes when Windows starts. Its files and journal use the existing `ProgramData\SinergiaPrint` location. Printer visibility depends on the service account; printers installed only for a user's profile may not be available to LocalSystem. Install required printers for the service context or configure an appropriate service account.
+The service runs in the background independently of application login and browser, and resumes when Windows starts. Generic setup requires no application credentials; connections are enrolled when an integrated application first recognizes it. Existing configuration and journal files are retained during upgrades, including upgrades started from a different application's page. Printer visibility depends on the service account; printers installed only for a user's profile may not be available to LocalSystem. Install required printers for the service context or configure an appropriate service account.
 
-Upgrade the NuGet package to **0.5.0** and the service to **0.4.0** for long polling. Older agents remain compatible and continue their previous claim interval. Service upgrades preserve installation data and the journal. Keep backend API URLs and data stable.
+Upgrade each application's NuGet package to **0.6.0** and the service once to **0.5.0** for automatic multi-application enrollment. Version 0.5.0 of the service also retains long polling. Agents 0.3/0.4 support only a single application and must be upgraded to remove that restriction. Keep backend API URLs and data stable.
 
 `UnlinkAsync` invalidates the current browser proof; it does not uninstall the Windows service or disable machine discovery. A later discovery can recognize the installed service again. To remove it, use Windows **Settings > Apps > Installed apps**, locate **SinergiaPrint Agent** and uninstall it. The administrative `scripts/uninstall.ps1` removes the service and retains machine data; it is a service-removal helper rather than the full application uninstaller.
 
