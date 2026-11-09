@@ -24,7 +24,7 @@ The demo retains each request's destination, payload and idempotency keys in bro
 dotnet run --project samples/PrintAgent.Demo
 ```
 
-Open the same address. If no compatible service is recognized, click **Install agent**, run the downloaded EXE with administrator approval, then refresh the connection. A browser may ask for local-network access permission.
+Open the same address. If no compatible service is recognized, click **Download installer**, run the downloaded EXE with administrator approval, then refresh the connection. A browser may ask for local-network access permission.
 
 Select a printer that accepts the chosen RAW format. ZPL requires a ZPL-capable printer; ESC/POS requires an ESC/POS-capable printer. The agent does not validate the language. Submitted jobs may produce physical output.
 

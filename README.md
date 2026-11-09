@@ -24,7 +24,7 @@ To test an installed agent and real printer:
 dotnet run --project samples/PrintAgent.Demo
 ```
 
-Open the same address and use **Install agent** if the service is unavailable. Run the downloaded installer, return to the page and refresh the connection. Choose a printer that supports the selected command language. Printing starts only when you submit a request.
+Open the same address and use **Download installer** if the service is unavailable. Run the downloaded installer, return to the page and refresh the connection. Choose a printer that supports the selected command language. Printing starts only when you submit a request.
 
 The demo accepts only local clients and uses a demonstration login. Its authentication setup is not a production template. See the [demo guide](samples/PrintAgent.Demo/README.md) for configuration and troubleshooting.
 
