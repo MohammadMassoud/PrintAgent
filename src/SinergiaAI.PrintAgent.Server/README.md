@@ -1,6 +1,6 @@
 # PrintAgent
 
-![SinergiaAI](https://www.sinergiaai.com/printagent/assets/sinergia.png)
+![SinergiaAI](https://raw.githubusercontent.com/MohammadMassoud/PrintAgent/main/branding/sinergia.png)
 
 [Product website](https://www.sinergiaai.com/printagent) · [GitHub](https://github.com/MohammadMassoud/PrintAgent)
 
