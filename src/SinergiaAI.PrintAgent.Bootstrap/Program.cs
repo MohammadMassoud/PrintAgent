@@ -141,12 +141,16 @@ namespace SinergiaAI.PrintAgent.Bootstrap
         internal SetupWindow()
         {
             Text = "PrintAgent Setup";
+            Icon = Icon.ExtractAssociatedIcon(Assembly.GetExecutingAssembly().Location);
             ClientSize = new Size(530, 245);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Segoe UI", 10);
-            Controls.Add(new Label { Text = "Connect your printers", Left = 26, Top = 25, Width = 480, Height = 35, Font = new Font("Segoe UI", 16, FontStyle.Bold) });
+            using (var stream = Assembly.GetExecutingAssembly().GetManifestResourceStream("PrintAgent.Logo.png"))
+            using (var source = new Bitmap(stream))
+                Controls.Add(new PictureBox { Left = 26, Top = 22, Width = 40, Height = 40, SizeMode = PictureBoxSizeMode.Zoom, Image = new Bitmap(source) });
+            Controls.Add(new Label { Text = "PrintAgent · SinergiaAI", Left = 80, Top = 25, Width = 420, Height = 35, Font = new Font("Segoe UI", 16, FontStyle.Bold) });
             Controls.Add(_status); Controls.Add(_close);
             _close.Click += (_, __) => Close();
             FormClosing += (_, e) => { if (_working) e.Cancel = true; };

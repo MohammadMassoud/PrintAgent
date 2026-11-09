@@ -63,7 +63,7 @@ public sealed class LocalAgentBridge(AgentOptions options, ApplicationConnection
             await next(context);
         });
         app.UseCors();
-        app.MapGet("/info", () => Results.Ok(new { protocol = 1, version = "0.5.0", product = "SinergiaAI.PrintAgent", multiApplication = true }));
+        app.MapGet("/info", () => Results.Ok(new { protocol = 1, version = "0.5.1", product = "SinergiaAI.PrintAgent", multiApplication = true }));
         using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { Timeout = TimeSpan.FromSeconds(12) };
         app.MapPost("/connect", async Task<IResult> (ConnectRequest request, HttpContext context, CancellationToken ct) =>
         {

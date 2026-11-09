@@ -1,5 +1,9 @@
 # PrintAgent
 
+![SinergiaAI](https://www.sinergiaai.com/printagent/assets/sinergia.png)
+
+[Product website](https://www.sinergiaai.com/printagent) · [GitHub](https://github.com/MohammadMassoud/PrintAgent)
+
 RAW printing for .NET 10 and Blazor Server. PrintAgent connects an authenticated application to Windows printers through a persistent queue and a background Windows service. Applications provide the exact ZPL, ESC/POS or other RAW bytes to send.
 
 Developed by SinergiaAI. MIT licensed. [Source and documentation](https://github.com/MohammadMassoud/PrintAgent).
@@ -7,7 +11,7 @@ Developed by SinergiaAI. MIT licensed. [Source and documentation](https://github
 ## Installation
 
 ```shell
-dotnet add package SinergiaAI.PrintAgent --version 0.6.0
+dotnet add package SinergiaAI.PrintAgent --version 0.6.1
 ```
 
 The package contains the Server, Client and Contracts assemblies, embedded browser discovery and a contextual installer bootstrap. Dependencies are restored by NuGet.
@@ -59,11 +63,11 @@ The facade does not start a polling timer. The consuming page controls connectio
 
 Install the service once per Windows computer. Multiple integrated applications, application users and browser profiles can use it. The browser discovers the service through `127.0.0.1:17831`; new applications enroll automatically using a single-use code from their authenticated backend. Each application retains separate credentials, queue and journal without replacing existing connections. The permanent service token does not enter the browser. Local-network permission may be required per origin and browser profile.
 
-Automatic multi-application enrollment requires package **0.6.0** and Windows agent **0.5.0**. Agents 0.3/0.4 need one upgrade. Generic Windows setup no longer asks for an API URL, GUID or token. Remote enrollment targets the application's own HTTPS origin; HTTP loopback is supported for local development.
+Automatic multi-application enrollment requires package **0.6.1** and Windows agent **0.5.1**. Agents 0.3/0.4 need one upgrade. Generic Windows setup no longer asks for an API URL, GUID or token. Remote enrollment targets the application's own HTTPS origin; HTTP loopback is supported for local development.
 
 The contextual download contains a single-use enrollment code. Running it retrieves configuration, verifies the pinned installer and requests administrative approval. Downloading this NuGet package does not install a Windows service. Windows x64 agent binaries include their runtime; the bootstrap requires .NET Framework 4.8. Executables are currently unsigned.
 
-Package **0.6.0** and agent **0.5.0** enable asynchronous long polling with a 20-second idle wait, reducing idle claim requests from approximately 30 to 3 per minute. Enqueue wakes a waiting claim without holding SQLite connections during the wait. Communication failures use exponential backoff with jitter. Older agents remain compatible but need upgrading to benefit. Notification hints are local to one API process.
+Package **0.6.1** and agent **0.5.1** enable asynchronous long polling with a 20-second idle wait, reducing idle claim requests from approximately 30 to 3 per minute. Enqueue wakes a waiting claim without holding SQLite connections during the wait. Communication failures use exponential backoff with jitter. Older agents remain compatible but need upgrading to benefit. Notification hints are local to one API process.
 
 ## Delivery semantics
 

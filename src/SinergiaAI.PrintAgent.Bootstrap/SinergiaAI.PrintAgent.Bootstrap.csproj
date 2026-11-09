@@ -8,8 +8,10 @@
     <AssemblyName>SinergiaAI.PrintAgent.Bootstrap</AssemblyName>
     <Version>0.2.0</Version>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
+    <ApplicationIcon>../../branding/sinergia.ico</ApplicationIcon>
   </PropertyGroup>
   <ItemGroup>
+    <EmbeddedResource Include="../../branding/sinergia.png" LogicalName="PrintAgent.Logo.png" />
     <Reference Include="System.Net.Http" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Drawing" />

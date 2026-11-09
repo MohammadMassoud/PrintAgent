@@ -18,10 +18,13 @@ with zipfile.ZipFile(package) as archive:
         assert f"lib/net10.0/SinergiaAI.PrintAgent.{component}.dll" in files, component
     assert not any(name.startswith("lib/") and "/SinergiaPrint." in name for name in files)
     assert "README.md" in files and "LICENSE" in files
+    assert "sinergia.png" in files and archive.read("sinergia.png").startswith(b'\x89PNG\r\n\x1a\n')
     manifest = ET.fromstring(archive.read("SinergiaAI.PrintAgent.nuspec"))
     ns = {"n": "http://schemas.microsoft.com/packaging/2013/05/nuspec.xsd"}
     assert manifest.findtext("n:metadata/n:id", namespaces=ns) == "SinergiaAI.PrintAgent"
     assert manifest.findtext("n:metadata/n:license", namespaces=ns) == "MIT"
+    assert manifest.findtext("n:metadata/n:icon", namespaces=ns) == "sinergia.png"
+    assert manifest.findtext("n:metadata/n:projectUrl", namespaces=ns) == "https://www.sinergiaai.com/printagent"
     assert manifest.find("n:metadata/n:repository", ns).get("url") == "https://github.com/MohammadMassoud/PrintAgent.git"
     for dependency in manifest.findall(".//n:dependency", ns):
         assert not dependency.get("id", "").startswith(("SinergiaPrint", "SinergiaAI.PrintAgent")), dependency.attrib

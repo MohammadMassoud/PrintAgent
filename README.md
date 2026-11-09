@@ -1,5 +1,9 @@
 # PrintAgent
 
+[![SinergiaAI](branding/sinergia.png)](https://www.sinergiaai.com/printagent)
+
+[Product website](https://www.sinergiaai.com/printagent) · [Documentation](docs/integration.md) · [NuGet](https://www.nuget.org/packages/SinergiaAI.PrintAgent)
+
 PrintAgent connects .NET and Blazor Server applications to printers on a Windows computer. Applications submit RAW commands, such as ZPL or ESC/POS, to a persistent queue. A Windows agent receives jobs and sends their bytes through the Windows spooler or a configured TCP connection.
 
 Developed by SinergiaAI. Licensed under [MIT](LICENSE).
@@ -31,7 +35,7 @@ The demo accepts only local clients and uses a demonstration login. Its authenti
 ## Add to an application
 
 ```shell
-dotnet add package SinergiaAI.PrintAgent --version 0.6.0
+dotnet add package SinergiaAI.PrintAgent --version 0.6.1
 ```
 
 Register the integration in an authenticated Blazor Server host that already configures interactive server components and authorization:
@@ -83,13 +87,13 @@ Additional operations include `SendBatchAsync`, `RefreshPrintersAsync`, `Downloa
 
 Install the service once per computer. Multiple applications, application users and browser profiles can use that installation. Each integrated application enrolls automatically through its authenticated backend and retains its own credentials, queue and durable journal. Adding an application does not replace other connections. Browser permission to access the local service may be required per origin and profile.
 
-Multi-application support requires package **0.6.0** in each application and Windows agent **0.5.0**. Older agents need one upgrade. A generic installation no longer asks for an API URL, GUID or token.
+Multi-application support requires package **0.6.1** in each application and Windows agent **0.5.1**. Older agents need one upgrade. A generic installation no longer asks for an API URL, GUID or token.
 
 Installation downloads a contextual EXE containing a single-use enrollment code. The bootstrap redeems configuration, downloads the pinned installer, verifies SHA-256 and requests elevation. Windows x64 agent binaries include their runtime; the bootstrap requires .NET Framework 4.8. Executables are currently unsigned.
 
 ## Queue behavior
 
-Library **0.6.0** and Windows agent **0.5.0** support long polling. An empty claim waits asynchronously for up to 20 seconds, without holding a SQLite connection or transaction. Enqueue and acknowledgement commits notify waiting claims. The agent renews an idle wait immediately and uses exponential backoff with jitter after communication failures.
+Library **0.6.1** and Windows agent **0.5.1** support long polling. An empty claim waits asynchronously for up to 20 seconds, without holding a SQLite connection or transaction. Enqueue and acknowledgement commits notify waiting claims. The agent renews an idle wait immediately and uses exponential backoff with jitter after communication failures.
 
 This reduces idle claim requests from approximately 30 to 3 per minute per agent. Older agents remain compatible but retain their previous polling interval; upgrade both backend and service to enable long polling. Notifications are local to an API process. With several processes sharing storage, another process sees work on its next claim, within the wait interval; immediate cross-process notification requires shared signaling.
 

@@ -1,20 +1,22 @@
 <Project>
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <Version>0.6.0</Version>
+    <Version>0.6.1</Version>
     <Authors>MohammadMassoud</Authors>
     <Company>SinergiaAI</Company>
-    <PackageProjectUrl>https://github.com/MohammadMassoud/PrintAgent</PackageProjectUrl>
+    <PackageProjectUrl>https://www.sinergiaai.com/printagent</PackageProjectUrl>
     <RepositoryUrl>https://github.com/MohammadMassoud/PrintAgent.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageIcon>sinergia.png</PackageIcon>
     <PackageTags>printing;printagent;raw;zpl;zebra;escpos;blazor;sinergiaai</PackageTags>
-    <PackageReleaseNotes>Machine-wide, multi-application printing with Windows agent 0.5.0. Applications enroll automatically through the authenticated backend; one service runs independent durable queues without replacing existing connections. Generic installation requires no API URL, GUID or token. Existing configuration and journals are preserved. Long polling remains enabled.</PackageReleaseNotes>
+    <PackageReleaseNotes>SinergiaAI product branding, package icon and official PrintAgent website. Windows agent 0.5.1 includes branded executables and setup. Multi-application enrollment, durable queues and long polling remain supported.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
   <ItemGroup>
     <None Include="README.md" Pack="true" PackagePath="/" />
     <None Include="$(MSBuildThisFileDirectory)../LICENSE" Pack="true" PackagePath="/" />
+    <None Include="$(MSBuildThisFileDirectory)../branding/sinergia.png" Pack="true" PackagePath="/" />
   </ItemGroup>
 </Project>
