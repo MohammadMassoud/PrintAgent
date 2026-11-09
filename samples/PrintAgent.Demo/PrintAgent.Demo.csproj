@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <RootNamespace>PrintAgentDemo</RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="../../src/SinergiaAI.PrintAgent.Server/SinergiaAI.PrintAgent.Server.csproj" />
+    <ProjectReference Include="../../src/SinergiaAI.PrintAgent.Contracts/SinergiaAI.PrintAgent.Contracts.csproj" />
+    <ProjectReference Include="../../src/SinergiaAI.PrintAgent.Agent/SinergiaAI.PrintAgent.Agent.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" />
+  </ItemGroup>
+  <Target Name="CopyDemoAgent" AfterTargets="Build">
+    <ItemGroup>
+      <DemoAgentFile Include="../../src/SinergiaAI.PrintAgent.Agent/bin/$(Configuration)/net10.0-windows/win-x64/**/*" Exclude="../../src/SinergiaAI.PrintAgent.Agent/bin/$(Configuration)/net10.0-windows/win-x64/appsettings.Local*.json;../../src/SinergiaAI.PrintAgent.Agent/bin/$(Configuration)/net10.0-windows/win-x64/*.db*;../../src/SinergiaAI.PrintAgent.Agent/bin/$(Configuration)/net10.0-windows/win-x64/*.lock" />
+    </ItemGroup>
+    <Copy SourceFiles="@(DemoAgentFile)" DestinationFiles="@(DemoAgentFile->'$(OutDir)DemoAgent/%(RecursiveDir)%(Filename)%(Extension)')" SkipUnchangedFiles="true" />
+  </Target>
+</Project>

@@ -78,7 +78,7 @@ public sealed partial class PrintStore
     }
     private static void Expire(SqliteConnection db, SqliteTransaction tx)
     {
-        Execute(db, tx, "UPDATE jobs SET status=4,error='Agente sem confirmacao; verifique a impressao antes de reenviar.',updated_at=$now WHERE status=1 AND claimed_at<$cutoff", ("$now", Now()), ("$cutoff", DateTimeOffset.UtcNow.AddMinutes(-2).ToString("O")));
+        Execute(db, tx, "UPDATE jobs SET status=4,error='Delivery was not confirmed; check the printer before requesting another copy.',updated_at=$now WHERE status=1 AND claimed_at<$cutoff", ("$now", Now()), ("$cutoff", DateTimeOffset.UtcNow.AddMinutes(-2).ToString("O")));
     }
     public PrintJobInfo? GetJob(Guid id)
     {
@@ -91,12 +91,14 @@ public sealed partial class PrintStore
         if (existing is not null)
         {
             using var c = Command(db, tx, "SELECT content FROM jobs WHERE id=$id", ("$id", existing.Id.ToString()));
-            if (existing.InstallationId != request.InstallationId || existing.PrinterId != request.PrinterId || (string?)c.ExecuteScalar() != request.ContentBase64) throw new InvalidOperationException("Chave de idempotencia ja usada com outro conteudo ou destino.");
+            if (existing.InstallationId != request.InstallationId || existing.PrinterId != request.PrinterId || (string?)c.ExecuteScalar() != request.ContentBase64) throw new InvalidOperationException("The idempotency key was already used with different content or destination.");
             tx.Commit(); return existing;
         }
         var now = Now(); var id = Guid.NewGuid();
         Execute(db, tx, "INSERT INTO jobs(id,installation_id,printer_id,content,request_key,status,created_at,updated_at) VALUES($id,$installation,$printer,$content,$key,0,$now,$now)", ("$id", id.ToString()), ("$installation", request.InstallationId.ToString()), ("$printer", request.PrinterId), ("$content", request.ContentBase64), ("$key", request.IdempotencyKey), ("$now", now));
-        tx.Commit(); return new(id, request.InstallationId, request.PrinterId, PrintStatus.Pending, null, DateTimeOffset.Parse(now), DateTimeOffset.Parse(now));
+        tx.Commit();
+        _workAvailable.Notify(request.InstallationId);
+        return new(id, request.InstallationId, request.PrinterId, PrintStatus.Pending, null, DateTimeOffset.Parse(now), DateTimeOffset.Parse(now));
     }
     public ClaimedPrintJob? Claim(Guid installationId)
     {
@@ -118,6 +120,8 @@ public sealed partial class PrintStore
         // Repeated acknowledgements are idempotent; definitive results cannot be overwritten.
         if (current is 2 or 3) { tx.Commit(); return current == (int)request.Status; }
         Execute(db, tx, "UPDATE jobs SET status=$status,error=$error,updated_at=$now WHERE id=$id", ("$status", (int)request.Status), ("$error", request.Error), ("$now", Now()), ("$id", jobId.ToString()));
-        tx.Commit(); return true;
+        tx.Commit();
+        _workAvailable.Notify(installationId);
+        return true;
     }
 }

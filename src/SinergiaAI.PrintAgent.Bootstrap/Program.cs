@@ -90,7 +90,7 @@ namespace SinergiaAI.PrintAgent.Bootstrap
         }
 
         private static Exception MissingContext() => new InvalidOperationException(
-            "Baixe o instalador pelo botao Instalar agente do seu aplicativo. Este arquivo nao possui um vinculo valido.");
+            "Download the installer using the Install agent button in your application. This file has no valid enrollment context.");
 
         internal async Task<string> ResolveAsync()
         {
@@ -101,11 +101,11 @@ namespace SinergiaAI.PrintAgent.Bootstrap
             using (var response = await client.PostAsync(new Uri(_api, "enrollment/redeem"), content))
             {
                 if (response.StatusCode == HttpStatusCode.BadRequest)
-                    throw new InvalidOperationException("Este instalador expirou ou ja foi utilizado. Volte ao aplicativo e baixe um novo instalador.");
+                    throw new InvalidOperationException("This installer has expired or has already been used. Return to the application and download a new installer.");
                 if (!response.IsSuccessStatusCode)
-                    throw new InvalidOperationException("Nao foi possivel conectar ao aplicativo. Confira a conexao e baixe um novo instalador. HTTP " + (int)response.StatusCode);
+                    throw new InvalidOperationException("Could not connect to the application. Check your connection and download a new installer. HTTP " + (int)response.StatusCode);
                 var text = await response.Content.ReadAsStringAsync();
-                if (text.Length > 16384) throw new InvalidOperationException("Resposta de configuracao invalida.");
+                if (text.Length > 16384) throw new InvalidOperationException("Invalid configuration response.");
                 var config = json.Deserialize<ConfigurationData>(text);
                 Guid installationId;
                 Uri? api;
@@ -113,7 +113,7 @@ namespace SinergiaAI.PrintAgent.Bootstrap
                     string.IsNullOrWhiteSpace(config.token) || config.token!.Length < 32 ||
                     !Uri.TryCreate(config.apiBaseUrl, UriKind.Absolute, out api) || api == null ||
                     !string.Equals(api.AbsoluteUri.TrimEnd('/'), _api.AbsoluteUri.TrimEnd('/'), StringComparison.Ordinal))
-                    throw new InvalidOperationException("A configuracao recebida nao corresponde a este aplicativo.");
+                    throw new InvalidOperationException("The configuration does not match this application.");
                 return json.Serialize(new { Agent = new { ApiBaseUrl = api.AbsoluteUri, InstallationId = installationId.ToString(), Token = config.token, NetworkPrinters = new object[0] } });
             }
         }
@@ -135,18 +135,18 @@ namespace SinergiaAI.PrintAgent.Bootstrap
     internal sealed class SetupWindow : Form
     {
         private readonly Label _status = new Label { AutoSize = false, Left = 26, Top = 82, Width = 480, Height = 95 };
-        private readonly Button _close = new Button { Text = "Fechar", Left = 402, Top = 190, Width = 100, Enabled = false };
+        private readonly Button _close = new Button { Text = "Close", Left = 402, Top = 190, Width = 100, Enabled = false };
         private bool _working = true;
 
         internal SetupWindow()
         {
-            Text = "PrintAgent by SinergiaAI - Instalacao automatica";
+            Text = "PrintAgent Setup";
             ClientSize = new Size(530, 245);
             FormBorderStyle = FormBorderStyle.FixedDialog;
             MaximizeBox = false;
             StartPosition = FormStartPosition.CenterScreen;
             Font = new Font("Segoe UI", 10);
-            Controls.Add(new Label { Text = "Conectando suas impressoras", Left = 26, Top = 25, Width = 480, Height = 35, Font = new Font("Segoe UI", 16, FontStyle.Bold) });
+            Controls.Add(new Label { Text = "Connect your printers", Left = 26, Top = 25, Width = 480, Height = 35, Font = new Font("Segoe UI", 16, FontStyle.Bold) });
             Controls.Add(_status); Controls.Add(_close);
             _close.Click += (_, __) => Close();
             FormClosing += (_, e) => { if (_working) e.Cancel = true; };
@@ -158,29 +158,29 @@ namespace SinergiaAI.PrintAgent.Bootstrap
             string? directory = null;
             try
             {
-                _status.Text = "Buscando a configuracao do seu aplicativo...";
+                _status.Text = "Retrieving your application configuration...";
                 var configuration = await SetupContext.Read().ResolveAsync();
                 directory = CreatePrivateDirectory();
                 var configPath = Path.Combine(directory, "configuration.json");
                 File.WriteAllText(configPath, configuration, new UTF8Encoding(false));
                 var installer = Path.Combine(directory, "SinergiaPrint-Setup.exe");
-                _status.Text = "Baixando e verificando o agente...";
+                _status.Text = "Downloading and verifying the agent...";
                 await DownloadInstallerAsync(installer);
-                _status.Text = "Autorize a instalacao no Windows. Nenhuma URL, GUID ou token precisa ser digitado.";
+                _status.Text = "Approve the Windows installation. No URL, GUID or token needs to be entered.";
                 using (var process = Process.Start(new ProcessStartInfo(installer,
                     "/SP- /SILENT /SUPPRESSMSGBOXES /NORESTART /CONFIGFILE=\"" + configPath + "\"")
                     { UseShellExecute = true, Verb = "runas", WorkingDirectory = directory }))
                 {
-                    if (process == null) throw new InvalidOperationException("Nao foi possivel iniciar o instalador.");
+                    if (process == null) throw new InvalidOperationException("Could not start the installer.");
                     await Task.Run(() => process.WaitForExit());
-                    if (process.ExitCode != 0) throw new InvalidOperationException("A instalacao nao foi concluida. Baixe um novo instalador pelo aplicativo para tentar novamente.");
+                    if (process.ExitCode != 0) throw new InvalidOperationException("Installation did not complete. Download a new installer from the application to try again.");
                 }
-                _status.Text = "Instalacao concluida. Volte ao aplicativo: o agente iniciara a conexao e informara as impressoras automaticamente.";
+                _status.Text = "Installation complete. Return to the application; the agent will connect and report available printers automatically.";
             }
             catch (Win32Exception ex) when (ex.NativeErrorCode == 1223)
-            { _status.Text = "Instalacao cancelada no Windows. Baixe um novo instalador pelo aplicativo quando quiser tentar novamente."; }
+            { _status.Text = "Installation was cancelled in Windows. Download a new installer from the application when you are ready to try again."; }
             catch (Exception ex)
-            { _status.Text = ex is InvalidOperationException ? ex.Message : "Nao foi possivel concluir. Confira sua conexao e baixe um novo instalador pelo aplicativo."; }
+            { _status.Text = ex is InvalidOperationException ? ex.Message : "Could not complete installation. Check your connection and download a new installer from the application."; }
             finally
             {
                 // Remove credentials after the elevated installer has finished reading them.
@@ -222,7 +222,7 @@ namespace SinergiaAI.PrintAgent.Bootstrap
                     while ((count = await source.ReadAsync(buffer, 0, buffer.Length)) != 0)
                     {
                         total += count;
-                        if (total > 150 * 1024 * 1024) throw new InvalidOperationException("O arquivo do instalador excedeu o tamanho esperado.");
+                        if (total > 150 * 1024 * 1024) throw new InvalidOperationException("The installer exceeded the expected download size.");
                         await output.WriteAsync(buffer, 0, count);
                     }
                 }
@@ -232,7 +232,7 @@ namespace SinergiaAI.PrintAgent.Bootstrap
             {
                 var hash = BitConverter.ToString(sha.ComputeHash(file)).Replace("-", "");
                 if (!string.Equals(hash, InstallerRelease.Sha256, StringComparison.OrdinalIgnoreCase))
-                    throw new InvalidOperationException("O instalador disponivel nao corresponde a esta versao. Volte ao aplicativo e baixe novamente apos a atualizacao do servidor.");
+                    throw new InvalidOperationException("The available installer does not match this version. Return to the application and download it again after the server update.");
             }
         }
     }

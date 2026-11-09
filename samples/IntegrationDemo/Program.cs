@@ -3,7 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using SinergiaAI.PrintAgent.Client;
 
 var url = Environment.GetEnvironmentVariable("PRINT_API_URL") ?? "http://localhost:5189/";
-var key = Environment.GetEnvironmentVariable("PRINT_API_KEY") ?? throw new InvalidOperationException("Configure PRINT_API_KEY no backend.");
+var key = Environment.GetEnvironmentVariable("PRINT_API_KEY") ?? throw new InvalidOperationException("Set PRINT_API_KEY in the backend environment.");
 var services = new ServiceCollection(); services.AddSinergiaAIPrintAgentClient(new Uri(url), key);
 using var provider = services.BuildServiceProvider();
 var printing = provider.GetRequiredService<PrintingClient>();
@@ -17,13 +17,13 @@ foreach (var installation in installations)
 if (args.Length == 3 && args[0] == "--send")
 {
     var installation = Guid.Parse(args[1]); var printerId = args[2];
-    var zpl = Encoding.ASCII.GetBytes("^XA^FO50,50^ADN,36,20^FDSinergiaPrint TESTE^FS^XZ");
+    var zpl = Encoding.ASCII.GetBytes("^XA^FO50,50^ADN,36,20^FDPrintAgent test^FS^XZ");
     var job = await printing.PrintAsync(installation, printerId, zpl, Guid.NewGuid().ToString());
-    Console.WriteLine($"Trabalho {job.Id}: {job.Status}");
+    Console.WriteLine($"Job {job.Id}: {job.Status}");
     for (var attempt = 0; attempt < 30; attempt++)
     {
         await Task.Delay(1000); job = await printing.GetJobAsync(job.Id);
-        if (job.Status is not (SinergiaAI.PrintAgent.Contracts.PrintStatus.Pending or SinergiaAI.PrintAgent.Contracts.PrintStatus.Claimed)) { Console.WriteLine($"Resultado: {job.Status} {job.Error}"); return; }
+        if (job.Status is not (SinergiaAI.PrintAgent.Contracts.PrintStatus.Pending or SinergiaAI.PrintAgent.Contracts.PrintStatus.Claimed)) { Console.WriteLine($"Result: {job.Status} {job.Error}"); return; }
     }
-    Console.WriteLine("Trabalho ainda pendente. Consulte o mesmo ID; nao reenvie automaticamente.");
+    Console.WriteLine("The job is still pending. Query the same ID; do not resubmit it automatically.");
 }

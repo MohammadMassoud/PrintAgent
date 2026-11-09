@@ -6,6 +6,14 @@
 artifacts/
 *.db*
 .vs/
+**/.demo-data/
+
+# Local development instructions and integration harnesses are not part of the public distribution.
+AGENTS.md
+tests/ComercialFixture/
+tests/enrollment.browser.cjs
+tests/printing-startup.browser.cjs
+docs/analise-jsprintmanager-comercial-wms.md
 
 # Generated sources/state of the isolated ERP integration test
 tests/ComercialFixture/Components/Testes/

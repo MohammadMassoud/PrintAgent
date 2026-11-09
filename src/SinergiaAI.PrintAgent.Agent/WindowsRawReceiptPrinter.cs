@@ -9,7 +9,7 @@ public sealed class WindowsRawReceiptPrinter
     public Task PrintAsync(string printerName, byte[] payload, CancellationToken ct)
     {
         if (string.IsNullOrWhiteSpace(printerName))
-            throw new InvalidOperationException("Nome da impressora do Windows nao configurado.");
+            throw new InvalidOperationException("A Windows printer name is required.");
 
         ct.ThrowIfCancellationRequested();
         if (TryParseTcpEndpoint(printerName, out var host, out var port))
@@ -91,23 +91,23 @@ public sealed class WindowsRawReceiptPrinter
         public static void SendBytesToPrinter(string printerName, byte[] bytes)
         {
             if (!OpenPrinter(printerName, out var printerHandle, IntPtr.Zero))
-                ThrowWin32($"Nao foi possivel abrir a impressora '{printerName}'.");
+                ThrowWin32($"Could not open printer '{printerName}'.");
 
             try
             {
                 var docInfo = new DocInfo();
                 if (!StartDocPrinter(printerHandle, 1, docInfo))
-                    ThrowWin32("Nao foi possivel iniciar o documento de impressao.");
+                    ThrowWin32("Could not start the print document.");
 
                 try
                 {
                     if (!StartPagePrinter(printerHandle))
-                        ThrowWin32("Nao foi possivel iniciar a pagina de impressao.");
+                        ThrowWin32("Could not start the print page.");
 
                     try
                     {
                         if (!WritePrinter(printerHandle, bytes, bytes.Length, out var written) || written != bytes.Length)
-                            ThrowWin32("Nao foi possivel enviar todos os bytes para a impressora.");
+                            ThrowWin32("Could not write all bytes to the printer.");
                     }
                     finally
                     {

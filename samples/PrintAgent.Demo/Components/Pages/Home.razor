@@ -1,0 +1,46 @@
+@page "/"
+@namespace PrintAgentDemo
+@attribute [Microsoft.AspNetCore.Authorization.Authorize]
+@rendermode InteractiveServer
+@inject PrintAgent PrintAgent
+@inject DemoMode Mode
+@inject DemoCapture Capture
+
+<PageTitle>PrintAgent · Local demo</PageTitle>
+<main>
+    <header><div><a class="brand" href="https://github.com/MohammadMassoud/PrintAgent">PrintAgent</a><span class="tag">LOCAL DEMO</span><h1>Print from this workstation.</h1><p>Connect an agent, choose a printer and send a RAW document.</p></div>
+        <span class="mode">@(Mode.Simulated ? "SIMULATED PRINTER" : "WINDOWS PRINTERS")</span></header>
+    <section class="connection">
+        <div><strong class="status @(PrintAgent.IsConnected ? "online" : "offline")" role="status">@(_loading ? "Connecting…" : PrintAgent.IsConnected ? "Agent connected" : PrintAgent.Status == PrintAgentStatus.Unlinked ? "Browser link removed" : "Agent not connected")</strong>
+            <p>@(PrintAgent.MachineName ?? "Local workstation") @if(PrintAgent.InstalledVersion is {} version){<span> · Agent @version</span>}</p>
+            @if (!PrintAgent.IsConnected && !_loading) { <p class="detail">@(PrintAgent.LastErrorMessage ?? "Start or install the agent, then refresh the connection.")</p> }
+            @if (PrintAgent.UpdateAvailable) { <p class="detail">Agent @PrintAgent.AvailableVersion is available.</p> }
+        </div>
+        <div class="actions"><button @onclick="ConnectAsync" disabled="@_busy">Refresh connection</button>
+            @if(!Mode.Simulated && (!PrintAgent.IsConnected || PrintAgent.UpdateAvailable)) { <button class="primary" @onclick="InstallAsync" disabled="@_busy">@(PrintAgent.UpdateAvailable ? "Update agent" : "Download installer")</button> }
+        </div>
+    </section>
+    @if (Mode.Simulated) { <aside>The temporary agent sends data to a local TCP receiver. No Windows service is installed and no physical printer is used when you select <b>Simulated TCP printer</b>.</aside> }
+    @if (_error is not null) { <p class="notice error" role="alert">@_error</p> }
+    @if (_message is not null) { <p class="notice" role="status">@_message</p> }
+    <div class="columns">
+        <section class="panel"><h2>Document</h2>
+            <label>Printer<select aria-label="Printer" @bind="_printerId" disabled="@(_busy || _request is not null || !PrintAgent.IsConnected)"><option value="">Select a printer</option>@foreach(var printer in AvailablePrinters){<option value="@printer.Id">@printer.Name</option>}</select></label>
+            <div class="fields"><label>Example<select aria-label="Example" @bind="_format" @bind:after="SelectFormat" disabled="@(_busy || _request is not null)"><option value="ZPL">ZPL label</option><option value="ESCPOS">ESC/POS receipt</option></select></label>
+                <label>Quantity<input aria-label="Quantity" type="number" min="1" max="100" @bind="_quantity" disabled="@(_busy || _request is not null)" /></label></div>
+            <label>RAW commands<textarea aria-label="RAW commands" rows="8" maxlength="2048" spellcheck="false" @bind="_content" disabled="@(_busy || _request is not null)"></textarea></label>
+            <p class="hint">Choose a printer that understands the selected commands. The agent forwards the bytes without converting or validating the language.</p>
+            <div class="actions"><button class="primary" @onclick="SendAsync" disabled="@(_busy || !PrintAgent.IsConnected || string.IsNullOrWhiteSpace(_printerId))">@(_request is null ? "Queue request" : "Retry current request")</button>
+                <button @onclick="NewRequestAsync" disabled="@(_busy || !CanCreateRequest)">New request</button></div>
+        </section>
+        <section class="panel"><div class="section-heading"><h2>Queue</h2><span>@_jobs.Count job(s)</span></div>
+            @if(_jobs.Count == 0){<div class="empty">Queued jobs will appear here.</div>}
+            else { <div class="table-wrap"><table><thead><tr><th>Job</th><th>Status</th><th>Result</th></tr></thead><tbody>@foreach(var job in _jobs){<tr><td><code>@job.Id.ToString("N")[..8]</code></td><td><span class="badge">@job.Status</span></td><td>@(job.Error ?? "—")</td></tr>}</tbody></table></div> }
+            <p class="hint">Sent confirms delivery to the spooler or TCP destination; it does not confirm physical paper output.</p>
+        </section>
+    </div>
+    @if(Mode.Simulated){<section class="panel"><div class="section-heading"><h2>Captured documents</h2><span>@Capture.Documents.Count capture(s) · latest 20</span></div>
+        @if(Capture.Documents.Count == 0){<p class="hint">Select Simulated TCP printer and queue a request to inspect its exact payload here.</p>}
+        @foreach(var document in Capture.Documents){<details><summary>@document.ReceivedAt.ToLocalTime().ToString("HH:mm:ss") · @document.Length bytes</summary><pre>@document.Content</pre></details>}</section>}
+    <footer><span>PrintAgent · SinergiaAI</span><a href="https://github.com/MohammadMassoud/PrintAgent#readme">Documentation</a></footer>
+</main>

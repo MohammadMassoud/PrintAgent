@@ -3,12 +3,13 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>SinergiaAI.PrintAgent</PackageId>
-    <Title>PrintAgent by SinergiaAI</Title>
+    <Title>PrintAgent</Title>
     <Description>All-in-one .NET integration for Windows RAW printing: embedded ASP.NET Core API, persistent SQLite queue, typed HTTP client, shared contracts and automatic agent enrollment. Send ZPL, ESC/POS or other raw printer commands through the Windows agent.</Description>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludePrintAgentLibraries</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
   <ItemGroup>
     <FrameworkReference Include="Microsoft.AspNetCore.App" />
+    <EmbeddedResource Include="Blazor/print-agent.js" LogicalName="PrintAgent.Browser.js" />
     <ProjectReference Include="../SinergiaAI.PrintAgent.Contracts/SinergiaAI.PrintAgent.Contracts.csproj" PrivateAssets="all" />
     <ProjectReference Include="../SinergiaAI.PrintAgent.Client/SinergiaAI.PrintAgent.Client.csproj" PrivateAssets="all" />
     <ProjectReference Include="../SinergiaAI.PrintAgent.Bootstrap/SinergiaAI.PrintAgent.Bootstrap.csproj" ReferenceOutputAssembly="false" SkipGetTargetFrameworkProperties="true" PrivateAssets="all" />

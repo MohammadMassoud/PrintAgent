@@ -37,7 +37,7 @@ public static class PrintServerExtensions
             var configuration = enrollment.Redeem(request.Code);
             return configuration is not null
                 ? Results.Json(configuration, AgentJson)
-                : Results.BadRequest(new { error = "Codigo de instalacao invalido, expirado ou ja utilizado. Baixe um novo instalador pelo aplicativo." });
+                : Results.BadRequest(new { error = "The enrollment code is invalid, expired or already used. Download a new installer from the application." });
         }).AllowAnonymous();
         var agents = endpoints.MapGroup(prefix.TrimEnd('/') + "/agent/{installationId:guid}").AllowAnonymous();
         agents.AddEndpointFilter(async (context, next) =>
@@ -51,7 +51,14 @@ public static class PrintServerExtensions
             if (request.Printers is null || request.Printers.Count > 200 || request.Printers.Any(p => string.IsNullOrWhiteSpace(p.Id) || p.Id.Length > 500 || string.IsNullOrWhiteSpace(p.Name) || p.Name.Length > 500) || request.Printers.Select(p => p.Id).Distinct().Count() != request.Printers.Count) return Results.BadRequest();
             store.Report(installationId, request.Printers); return Results.NoContent();
         });
-        agents.MapPost("/claim", (Guid installationId, PrintStore store) => store.Claim(installationId) is { } job ? Results.Ok(job) : Results.NoContent());
+        agents.MapPost("/claim", async Task<IResult> (Guid installationId, int? waitSeconds, HttpContext context, PrintStore store) =>
+        {
+            if (waitSeconds is < 0 or > PrintProtocol.MaxLongPollSeconds) return Results.BadRequest();
+            context.Response.Headers.CacheControl = "no-store";
+            context.Response.Headers[PrintProtocol.LongPollHeader] = PrintProtocol.MaxLongPollSeconds.ToString(System.Globalization.CultureInfo.InvariantCulture);
+            var job = await store.ClaimAsync(installationId, waitSeconds ?? 0, context.RequestAborted);
+            return job is not null ? Results.Ok(job) : Results.NoContent();
+        });
         // Bind with protocol options instead of changing JSON settings of the host application.
         agents.MapPost("/jobs/{jobId:guid}/complete", async Task<IResult> (Guid installationId, Guid jobId, HttpContext context, PrintStore store) =>
         {

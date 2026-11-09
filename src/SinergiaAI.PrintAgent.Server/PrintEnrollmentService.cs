@@ -19,7 +19,7 @@ public sealed class PrintEnrollmentService(PrintStore store, IDataProtectionProv
             apiBaseUrl.UserInfo.Length != 0 || apiBaseUrl.Query.Length != 0 || apiBaseUrl.Fragment.Length != 0)
             throw new ArgumentException("A API deve usar HTTPS (HTTP somente para localhost), sem credenciais na URL.");
         if (!store.Authenticate(credentials.InstallationId, credentials.AgentToken))
-            throw new UnauthorizedAccessException("Instalacao invalida.");
+            throw new UnauthorizedAccessException("Invalid installation.");
         var api = apiBaseUrl.AbsoluteUri.TrimEnd('/') + "/";
         var code = Convert.ToHexString(RandomNumberGenerator.GetBytes(32));
         var expiry = DateTimeOffset.UtcNow.AddMinutes(30);
@@ -46,7 +46,7 @@ public sealed class PrintEnrollmentService(PrintStore store, IDataProtectionProv
     private static byte[] BuildInstaller(InstallerContext context)
     {
         using var template = typeof(PrintEnrollmentService).Assembly.GetManifestResourceStream("SinergiaAI.PrintAgent.Bootstrap.exe")
-            ?? throw new InvalidOperationException("O inicializador do instalador nao foi incluido na compilacao do modulo.");
+            ?? throw new InvalidOperationException("The installer bootstrap was not embedded in this build.");
         using var output = new MemoryStream();
         template.CopyTo(output);
         var contextBytes = JsonSerializer.SerializeToUtf8Bytes(context, Json);

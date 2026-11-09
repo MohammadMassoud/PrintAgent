@@ -13,8 +13,8 @@ public sealed class PrintingClient(HttpClient http)
     {
         using (response)
         {
-            if (!response.IsSuccessStatusCode) throw new HttpRequestException($"API de impressao retornou {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync(ct)}", null, response.StatusCode);
-            return await response.Content.ReadFromJsonAsync<T>(Json, ct) ?? throw new InvalidOperationException("Resposta vazia da API de impressao.");
+            if (!response.IsSuccessStatusCode) throw new HttpRequestException($"The printing API returned {(int)response.StatusCode}: {await response.Content.ReadAsStringAsync(ct)}", null, response.StatusCode);
+            return await response.Content.ReadFromJsonAsync<T>(Json, ct) ?? throw new InvalidOperationException("The printing API returned an empty response.");
         }
     }
     public async Task<List<InstallationInfo>> ListInstallationsAsync(CancellationToken ct = default) => await ReadAsync<List<InstallationInfo>>(await http.GetAsync("api/installations", ct), ct);

@@ -1,11 +1,17 @@
 using Microsoft.AspNetCore.DataProtection;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.Json.Serialization;
 using SinergiaAI.PrintAgent.Contracts;
 
 namespace SinergiaAI.PrintAgent.Server;
 
-public sealed record PrintMachineProof(string Comprovante, Guid InstallationId, string MachineName);
+public sealed record PrintMachineProof([property: JsonPropertyName("comprovante")] string Proof, Guid InstallationId, string MachineName)
+{
+    // Retain the legacy JSON name and accessor for existing 0.3/0.4 integrations.
+    [JsonIgnore, Obsolete("Use Proof instead.")]
+    public string Comprovante => Proof;
+}
 public sealed record PrintMachineConnection(InstallationInfo Installation, string MachineName);
 public sealed record ConfirmPrintMachineRequest(string Challenge, Guid InstallationId, string MachineName);
 

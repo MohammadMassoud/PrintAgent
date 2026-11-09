@@ -14,7 +14,7 @@ public sealed class AgentJournal
         c.CommandText = """
             PRAGMA journal_mode=WAL;
             CREATE TABLE IF NOT EXISTS journal(id TEXT PRIMARY KEY,claim_id TEXT NOT NULL,status INTEGER NOT NULL,error TEXT,acked INTEGER NOT NULL DEFAULT 0);
-            UPDATE journal SET status=4,error='Agente interrompido durante o envio; confira a impressao antes de reenviar.' WHERE status=1;
+            UPDATE journal SET status=4,error='The agent stopped during delivery; check the printer before requesting another copy.' WHERE status=1;
             """; c.ExecuteNonQuery();
     }
     private SqliteConnection Open() { var db = new SqliteConnection(_cs); db.Open(); return db; }

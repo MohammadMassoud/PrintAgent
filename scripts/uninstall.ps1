@@ -6,6 +6,6 @@ if ($service) {
         $service.WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Stopped,[TimeSpan]::FromSeconds(30))
     }
     & sc.exe delete 'SinergiaPrint Agent'
-    if ($LASTEXITCODE -ne 0) { throw 'Falha ao remover servico.' }
+    if ($LASTEXITCODE -ne 0) { throw 'Could not remove the Windows service.' }
 }
-Write-Host 'Servico removido. Configuracoes e historico preservados em ProgramData\SinergiaPrint.'
+Write-Host 'Service removed. Configuration and history were preserved in ProgramData\SinergiaPrint.'

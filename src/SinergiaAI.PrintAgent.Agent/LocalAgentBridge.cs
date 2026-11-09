@@ -59,7 +59,7 @@ public sealed class LocalAgentBridge(AgentOptions options, ILogger<LocalAgentBri
             await next(context);
         });
         app.UseCors();
-        app.MapGet("/info", () => Results.Ok(new { protocol = 1, version = "0.3.0", product = "SinergiaAI.PrintAgent" }));
+        app.MapGet("/info", () => Results.Ok(new { protocol = 1, version = "0.4.0", product = "SinergiaAI.PrintAgent" }));
         using var client = new HttpClient(new HttpClientHandler { AllowAutoRedirect = false, UseCookies = false }) { Timeout = TimeSpan.FromSeconds(12) };
         app.MapPost("/connect", async Task<IResult> (ConnectRequest request, CancellationToken ct) =>
         {
@@ -68,7 +68,7 @@ public sealed class LocalAgentBridge(AgentOptions options, ILogger<LocalAgentBri
                 || request.Challenge is not { Length: 64 } || !request.Challenge.All(Uri.IsHexDigit)) return Results.BadRequest();
             var configured = new Uri(options.ApiBaseUrl.TrimEnd('/') + "/");
             if (Uri.Compare(new Uri(requested.AbsoluteUri.TrimEnd('/') + "/"), configured, UriComponents.HttpRequestUrl, UriFormat.UriEscaped, StringComparison.Ordinal) != 0)
-                return Results.Conflict(new { error = "O agente está configurado para outro aplicativo." });
+                return Results.Conflict(new { error = "The agent is configured for another application." });
             using var message = new HttpRequestMessage(HttpMethod.Post, new Uri(configured, "machine/confirm"));
             message.Headers.Add("X-Agent-Token", options.Token);
             message.Content = JsonContent.Create(new { request.Challenge, options.InstallationId, MachineName = Environment.MachineName });
@@ -76,9 +76,9 @@ public sealed class LocalAgentBridge(AgentOptions options, ILogger<LocalAgentBri
             {
                 using var response = await client.SendAsync(message, ct);
                 return response.IsSuccessStatusCode ? Results.Ok(new { connected = true })
-                    : Results.Json(new { error = "Não foi possível confirmar a máquina no aplicativo." }, statusCode: 502);
+                    : Results.Json(new { error = "The agent could not confirm this machine with the application." }, statusCode: 502);
             }
-            catch (HttpRequestException) { return Results.Json(new { error = "O agente não alcançou a API do aplicativo." }, statusCode: 502); }
+            catch (HttpRequestException) { return Results.Json(new { error = "The agent could not reach the application API." }, statusCode: 502); }
             catch (TaskCanceledException) when (!ct.IsCancellationRequested) { return Results.StatusCode(504); }
         });
         logger.LogInformation("Machine discovery listening on loopback port {Port}.", options.LocalBridgePort);

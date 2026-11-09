@@ -2,9 +2,9 @@
 
 Internal component included in the single **SinergiaAI.PrintAgent** NuGet package. This project no longer produces a separate package. See [the unified package README](../SinergiaAI.PrintAgent.Server/README.md).
 
-Shared contracts for SinergiaPrint, a raw-printing bridge between .NET applications and printers reachable by a Windows agent.
+Shared contracts for PrintAgent, a RAW printing bridge between .NET applications and printers reachable by a Windows agent.
 
-Targets .NET 10. This is an initial preview.
+Targets .NET 10.
 
 Includes printer and installation information, raw print-job requests, claim/acknowledgment messages, job status, and enrollment configuration contracts.
 

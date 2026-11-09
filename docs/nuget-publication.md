@@ -1,69 +1,61 @@
-# Publicação do pacote único
+# Release guide
 
-Produto: **PrintAgent**, da SinergiaAI. Pacote: **SinergiaAI.PrintAgent**.
-Versão preparada: **0.3.0-preview.1**. Requer **.NET 10 e ASP.NET Core**.
-Licença MIT, autorizada pelo proprietário. Repositório: https://github.com/MohammadMassoud/PrintAgent.
+PrintAgent is distributed as the `SinergiaAI.PrintAgent` NuGet package and a separate Windows installer. The integration package version is **0.5.0**; the Windows agent version is **0.4.0**. Upgrade both to enable long polling.
 
-## O que publicar
+## Build and verify
 
-Somente `artifacts/nuget-unified/SinergiaAI.PrintAgent.0.3.0-preview.1.nupkg`.
-
-O arquivo contém `SinergiaAI.PrintAgent.Server.dll`, `SinergiaAI.PrintAgent.Client.dll` e `SinergiaAI.PrintAgent.Contracts.dll`, além do README e da licença. O inicializador Windows está embutido em Server. Não há dependência dos antigos pacotes SinergiaPrint. Dependências de terceiros, como SQLite, são restauradas pelo NuGet.
-
-Os projetos internos continuam separados para manutenção, mas apenas Server gera um pacote, usando o ID público SinergiaAI.PrintAgent. O EXE de instalação do serviço Windows continua separado: instalar o NuGet no backend não instala um serviço na máquina do usuário. O inicializador embutido baixa o instalador público e valida seu SHA-256.
-
-## Gerar e verificar
-
-No PowerShell, na pasta do repositório:
+Use Windows x64, the .NET 10 SDK and Python. Inno Setup 6 is needed to build the installer.
 
 ```powershell
-dotnet build .\SinergiaAI.PrintAgent.slnx
-python .\tests\integration.py
+dotnet build SinergiaAI.PrintAgent.slnx
+python tests/integration.py
+python tests/long_polling.py
+python tests/installer_validation.py
+```
+
+Checks use isolated data and simulated destinations without permanent service installation or physical printing.
+
+## Windows installer
+
+```powershell
+.\scripts\publish.ps1 -BuildSetup
+```
+
+The script publishes a self-contained agent, creates `artifacts/SinergiaPrint-Setup.exe`, pins its SHA-256 and immutable URL in the bootstrap source, and rebuilds the server assembly. Existing publish output is archived. Keep private configuration outside public artifacts.
+
+Publish the exact installer at the pinned URL before releasing NuGet. Verify the hosted SHA-256 and retain older immutable installers for existing package versions. Regenerating the installer requires rebuilding and verifying the package so the embedded hash remains correct.
+
+## NuGet package
+
+```powershell
 .\scripts\pack-nuget.ps1
-python .\tests\package_integration.py
+python tests/package_integration.py
 ```
 
-`pack-nuget.ps1` apenas empacota as bibliotecas; não publica no NuGet e não gera nem publica outro instalador. O teste verifica as DLLs, os metadados e a ausência de dependências antigas, restaura o pacote em um projeto isolado e executa SQLite, criação do instalador, resgate de uso único e registro do cliente/endpoints. Não instala serviço nem imprime em impressora física.
+Output: `artifacts/nuget-unified/SinergiaAI.PrintAgent.0.5.0.nupkg`.
 
-## Publicar manualmente
+The package contains Server, Client and Contracts assemblies, embedded browser discovery and installer bootstrap, English README and MIT license. NuGet restores third-party dependencies. It excludes demo data, credentials and application-specific libraries.
 
-1. Entre em https://www.nuget.org/packages/manage/upload com a conta proprietária.
-2. Escolha o único `.nupkg` em `artifacts/nuget-unified/` correspondente à versão atual.
-3. Confira ID `SinergiaAI.PrintAgent`, versão, licença MIT, repositório e README. Não escolha os arquivos antigos em `artifacts/nuget/`.
-4. Clique em **Submit** e aguarde a validação/indexação do NuGet.
+Verification restores the actual package into an isolated consumer and checks metadata, public facade, resources, queue and single-use enrollment.
 
-Não é necessária chave de API para o upload pelo site. A disponibilidade do novo ID será confirmada pelo próprio NuGet no upload. A criação do arquivo local não significa que ele já esteja publicado.
+### Visual Studio
 
-Nas próximas versões, atualize `Version` em `build/NuGetPackage.props`, as instruções de instalação e as notas de versão antes de gerar outro arquivo. Não reutilize uma versão já publicada.
+Select **Release**, right-click `SinergiaAI.PrintAgent.Server`, and choose **Pack**. Default output is `src/SinergiaAI.PrintAgent.Server/bin/Release/`. This does not build or publish a Windows installer.
 
-## Instalar ou migrar
+The package version is in `build/NuGetPackage.props`. Agent and installer versions are maintained separately.
 
-Após a publicação:
+## Publish
 
-```powershell
-dotnet add package SinergiaAI.PrintAgent --version 0.3.0-preview.1
+1. Sign in to [NuGet upload](https://www.nuget.org/packages/manage/upload) with an owner account.
+2. Select the new package and review ID, version, license, dependencies, repository and README.
+3. Submit and wait for validation and search indexing.
+
+Published versions are immutable. A local build is not publication. A GitHub README edit does not change a published package. Stable `0.5.0` does not require enabling prerelease packages in Visual Studio.
+
+## Upgrade
+
+```shell
+dotnet add package SinergiaAI.PrintAgent --version 0.5.0
 ```
 
-Remova antes os PackageReferences antigos `SinergiaPrint.Server`, `SinergiaPrint.Client` e `SinergiaPrint.Contracts`, ou os ProjectReferences equivalentes. Instale o pacote único em cada projeto que utilizar os tipos; em uma solução com backend e biblioteca de páginas separados, ambos podem precisar da referência. Não combine os pacotes antigos com o novo.
-
-Atualize os namespaces para `SinergiaAI.PrintAgent.Server`, `SinergiaAI.PrintAgent.Client` e `SinergiaAI.PrintAgent.Contracts`. As extensões agora são `AddSinergiaAIPrintAgentServer`, `MapSinergiaAIPrintAgent` e `AddSinergiaAIPrintAgentClient`. As DLLs e os projetos também seguem esse padrão. A solução agora é `SinergiaAI.PrintAgent.slnx`.
-
-Projetos sem SDK Web precisam declarar `<FrameworkReference Include="Microsoft.AspNetCore.App" />`. O pacote unificado é destinado ao backend / Blazor Server, não ao WebAssembly. Veja o README do pacote em `src/SinergiaAI.PrintAgent.Server/README.md` para registro e endpoints.
-
-Para desenvolvimento com ProjectReference ao Server, referencie Contracts explicitamente nos projetos que usam seus tipos. As referências internas ficam privadas para evitar dependências de pacotes separados durante o empacotamento.
-
-## Histórico
-
-Os três pacotes `SinergiaPrint.Contracts`, `SinergiaPrint.Client` e `SinergiaPrint.Server` foram publicados anteriormente na versão `0.2.0-preview.1`. Em 06/11/2026, os três foram retirados da listagem (unlisted) a pedido do proprietário. O NuGet não permite exclusão permanente pelo painel. A restauração por versão exata continua disponível; as buscas podem demorar algumas horas para refletir a retirada.
-
-O piloto do Comercial utiliza `PackageReference` ao pacote único na biblioteca Common; os projetos consumidores recebem os tipos pela referência transitiva. Não depende de caminhos absolutos para o repositório do agente.
-
-Identificadores de compatibilidade do serviço Windows, diretórios de dados, formato de inscrição e URL pública do instalador foram preservados para não desconectar instalações existentes. Isso não afeta os novos namespaces e nomes das DLLs.
-
-## Atualização 0.3: reconhecimento da máquina
-
-O instalador Windows 0.3.0 está no servidor de downloads. O pacote `SinergiaAI.PrintAgent.0.3.0-preview.1.nupkg` foi enviado ao NuGet.org e sua listagem foi confirmada pelo proprietário. Inclui o inicializador com o hash desse instalador e os serviços de descoberta. Não sobrescreva nenhuma versão publicada.
-
-O consumidor que ainda usa o agente Windows 0.2 precisa atualizá-lo uma vez pelo botão da página. Só o NuGet não atualiza o serviço instalado. A configuração e o diário são mantidos. Depois, usuários diferentes e perfis de navegador distintos reconhecem o mesmo serviço local.
-
-Os ajustes seguintes de mensagens, comparação da versão e encapsulamento de JS no `Sinergia.Maui.Common` não alteram as DLLs do pacote público nem o serviço Windows. Basta publicar o aplicativo consumidor. Os READMEs foram atualizados no código-fonte; o README de uma versão NuGet já publicada não muda com essa edição. Inclua a documentação no próximo pacote, com versão nova, quando houver uma publicação.
+Preserve API prefix, data directory, Data Protection keys and connection identifiers. Older agents remain compatible but retain their polling interval until updated. See the [integration guide](integration.md).

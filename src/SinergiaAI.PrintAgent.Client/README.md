@@ -2,7 +2,7 @@
 
 Internal component included in the single **SinergiaAI.PrintAgent** NuGet package. This project no longer produces a separate package. See [the unified package README](../SinergiaAI.PrintAgent.Server/README.md).
 
-Typed HTTP client for a separately hosted SinergiaPrint API. Targets .NET 10; initial preview.
+Typed HTTP client for a separately hosted PrintAgent API. Targets .NET 10.
 
 Register in your **server/backend**, keeping the API key in protected server configuration:
 
