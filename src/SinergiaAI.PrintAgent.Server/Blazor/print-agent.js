@@ -15,6 +15,7 @@ export async function connect(options, callback) {
         const version = await info.json();
         if (version.product !== 'SinergiaAI.PrintAgent' || version.protocol !== 2)
             return { error: 'AGENT_UPDATE_REQUIRED', version: version.version };
+        if (options.automaticAuthorization && !version.desktopAuthorization) return { error: 'AGENT_UPDATE_REQUIRED', version: version.version };
         const current = socket = new WebSocket(`ws://127.0.0.1:${options.port}/ws`);
         await new Promise((resolve, reject) => {
             const timer = setTimeout(() => { current.close(); reject(fail('AGENT_UNREACHABLE')); }, 5000);
@@ -34,7 +35,16 @@ export async function connect(options, callback) {
             observer?.invokeMethodAsync('BridgeClosed').catch(() => {});
         };
         let result;
-        try { result = await request('hello'); }
+        try {
+            result = await request('hello', { requestAuthorization: !!options.automaticAuthorization });
+            const deadline = Date.now() + 45000;
+            while (result.authorizationPending && socket === current && Date.now() < deadline) {
+                await new Promise(resolve => setTimeout(resolve, 750));
+                result = await request('hello', { requestAuthorization: true });
+            }
+            if (result.authorizationPending || result.authorizationDenied)
+                return { error: 'LOCAL_ORIGIN_DENIED', version: version.version };
+        }
         catch (e) { return { error: e.code || 'AGENT_UNREACHABLE', version: version.version }; }
         heartbeat = setInterval(() => {
             if (document.visibilityState !== 'visible') return;

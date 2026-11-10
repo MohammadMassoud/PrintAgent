@@ -25,6 +25,7 @@ builder.Services.AddDataProtection().PersistKeysToFileSystem(new DirectoryInfo(P
 builder.Services.AddPrintAgent(o =>
 {
     o.DataDirectory = data;
+    o.AutomaticAuthorization = builder.Configuration.GetValue<bool?>("Demo:AutomaticAuthorization") ?? builder.Configuration["Demo:ErrorExample"] != "authorization";
     o.BrowserStoragePrefix = simulate ? "PrintAgent.Simulator." : "PrintAgent.Demo.";
     o.LocalBridgePort = builder.Configuration.GetValue<int?>("Demo:BridgePort") ?? (simulate ? 17832 : 17831);
 });

@@ -17,7 +17,6 @@
             @if (PrintAgent.UpdateAvailable) { <p class="detail">Agent @PrintAgent.AvailableVersion is available.</p> }
         </div>
         <div class="actions">
-            @if(PrintAgent.Status == PrintAgentStatus.OriginDenied && !Mode.Simulated) { <button class="primary" @onclick="AuthorizeAsync">Authorize this website</button> }
             <button @onclick="ConnectAsync" disabled="@_busy">Refresh connection</button>
             @if(!Mode.Simulated && PrintAgent.LastErrorCode is not (PrintAgentErrorCodes.AuthenticationRequired or PrintAgentErrorCodes.UserIdentifierMissing or PrintAgentErrorCodes.AccessDenied) && (!PrintAgent.IsConnected || PrintAgent.UpdateAvailable)) { <button class="primary" @onclick="InstallAsync" disabled="@_busy">@(PrintAgent.UpdateAvailable ? "Update agent" : "Download installer")</button> }
         </div>

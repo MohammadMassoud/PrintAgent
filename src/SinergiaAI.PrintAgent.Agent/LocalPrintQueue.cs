@@ -52,6 +52,15 @@ public sealed class LocalPrintQueue
     {
         lock (_gate) { using var db = Open(); using var c = db.CreateCommand(); c.CommandText = "SELECT COUNT(*) FROM origins WHERE origin=$o"; c.Parameters.AddWithValue("$o", NormalizeOrigin(origin)); return (long)c.ExecuteScalar()! != 0; }
     }
+    public string[] ListOrigins()
+    {
+        lock (_gate)
+        {
+            using var db = Open(); using var c = db.CreateCommand(); c.CommandText = "SELECT origin FROM origins ORDER BY origin";
+            using var reader = c.ExecuteReader(); var origins = new List<string>();
+            while (reader.Read()) origins.Add(reader.GetString(0)); return origins.ToArray();
+        }
+    }
     public void ApproveOrigin(string origin) => SetOrigin(origin, true);
     public void SetOrigin(string origin, bool approved)
     {

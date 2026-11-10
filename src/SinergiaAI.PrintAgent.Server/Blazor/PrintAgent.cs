@@ -39,7 +39,7 @@ public sealed partial class PrintAgent(IServiceProvider services, IJSRuntime js,
     {
         _ = services;
         _callback ??= DotNetObjectReference.Create(this);
-        _browser ??= await js.InvokeAsync<IJSObjectReference>("import",ct,new Uri(new Uri(navigation.BaseUri),options.Value.ApiPrefix.Trim('/') + "/browser.js?v=10").AbsoluteUri);
+        _browser ??= await js.InvokeAsync<IJSObjectReference>("import",ct,new Uri(new Uri(navigation.BaseUri),options.Value.ApiPrefix.Trim('/') + "/browser.js?v=11").AbsoluteUri);
     }
     public async Task StartAsync(CancellationToken ct = default)
     {
@@ -47,7 +47,7 @@ public sealed partial class PrintAgent(IServiceProvider services, IJSRuntime js,
         try
         {
             await PrepareAsync(ct);
-            var info = await _browser!.InvokeAsync<BridgeInfo>("connect",ct,new { port = options.Value.LocalBridgePort },_callback);
+            var info = await _browser!.InvokeAsync<BridgeInfo>("connect",ct,new { port = options.Value.LocalBridgePort, automaticAuthorization = options.Value.AutomaticAuthorization },_callback);
             InstalledVersion = info.Version;
             if (info.Error is not null)
             {

@@ -9,7 +9,7 @@ using Microsoft.AspNetCore.Http;
 namespace SinergiaAI.PrintAgent.Agent;
 
 /// <summary>Protocol 2: browser to local durable queue. No remote API, user token or server database.</summary>
-public sealed class LocalWebSocketBridge(AgentOptions options, LocalPrintQueue queue, LocalPrinters printers, ILogger<LocalWebSocketBridge> logger) : BackgroundService
+public sealed class LocalWebSocketBridge(AgentOptions options, LocalPrintQueue queue, LocalPrinters printers, AuthorizationRequests requests, ILogger<LocalWebSocketBridge> logger) : BackgroundService
 {
     private static readonly JsonSerializerOptions Json = new(JsonSerializerDefaults.Web);
     private readonly SemaphoreSlim _connections = new(16);
@@ -30,7 +30,7 @@ public sealed class LocalWebSocketBridge(AgentOptions options, LocalPrintQueue q
             await next(context);
         });
         app.UseCors(); app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(20), KeepAliveTimeout = TimeSpan.FromSeconds(20) });
-        app.MapGet("/info", () => Results.Ok(new { protocol = 2, version = "1.0.0", product = "SinergiaAI.PrintAgent", transport = "websocket", multiApplication = true }));
+        app.MapGet("/info", () => Results.Ok(new { protocol = 2, version = "1.1.0", product = "SinergiaAI.PrintAgent", transport = "websocket", desktopAuthorization = true, multiApplication = true }));
         app.Map("/ws", async context =>
         {
             if (!context.WebSockets.IsWebSocketRequest) { context.Response.StatusCode = 400; return; }
@@ -92,10 +92,19 @@ public sealed class LocalWebSocketBridge(AgentOptions options, LocalPrintQueue q
                 id = root.GetProperty("id").GetString();
                 if (id is null || id.Length > 64) throw new ArgumentException("Invalid request ID.");
                 var method = root.GetProperty("method").GetString();
-                if (!queue.IsApproved(origin)) { await Reply(socket,sends,id,null,"LOCAL_ORIGIN_DENIED",ct); continue; }
+                if (!queue.IsApproved(origin))
+                {
+                    if (method == "hello" && root.TryGetProperty("requestAuthorization",out var ask) && ask.ValueKind == JsonValueKind.True)
+                    {
+                        var decision = requests.Ask(origin);
+                        await Reply(socket,sends,id,new { authorizationPending = decision is null, authorizationDenied = decision == false },null,ct);
+                    }
+                    else await Reply(socket,sends,id,null,"LOCAL_ORIGIN_DENIED",ct);
+                    continue;
+                }
                 object result = method switch
                 {
-                    "hello" or "printers" => new { protocol = 2, version = "1.0.0", machineId = queue.MachineId, machineName = Environment.MachineName, printers = printers.List() },
+                    "hello" or "printers" => new { protocol = 2, version = "1.1.0", machineId = queue.MachineId, machineName = Environment.MachineName, printers = printers.List() },
                     "enqueue" => queue.Enqueue(origin, root.GetProperty("documents").Deserialize<LocalDocument[]>(Json) ?? [], printers.Destinations()),
                     "jobs" => queue.GetJobs(origin, root.GetProperty("jobIds").Deserialize<Guid[]>(Json) ?? []),
                     "ping" => new { alive = true },

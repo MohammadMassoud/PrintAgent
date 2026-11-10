@@ -127,9 +127,9 @@ internal static class PrintAgentErrorCatalog
             "Preserve local-queue.db, WAL files, legacy journals and configuration. Do not delete the queue to resolve a permission issue.",
             "Ask the workstation administrator to check the Windows Application log. No printing database or folder permission is required on the application server." ]),
         OriginDenied => ("This website has not been authorized to use the local agent.", [
-            "Click Authorize this website in the application. Windows will open the PrintAgent permission dialog.",
+            "Open SinergiaAI PrintAgent from the Windows Start menu if its tray app is not running, then refresh the application connection.",
             "Verify the exact website address shown in that dialog before approving. Authorization is shared by all Windows users and browser profiles on this computer.",
-            "Return to the application and refresh the connection. Browser local-network permission may also be required for each browser profile." ]),
+            "StartAsync requests the native permission dialog automatically. If denied or timed out, refresh when ready. Browser local-network permission may also be required." ]),
         PortConflict or ProtocolIncompatible or AgentUpdateRequired => (code == PortConflict ? "Another service is responding on the local agent port." : "The installed agent must be updated for this application's integration.", [
             "Compare the installed agent and integration versions shown by the application.",
             "Update using the application's official installer. Preserve the existing configuration and journals.",

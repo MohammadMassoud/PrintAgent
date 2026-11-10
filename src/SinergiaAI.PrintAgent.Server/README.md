@@ -26,10 +26,10 @@ The default integration has no printing API, server database, API key, remote en
 
 ## Integration
 
-Requires .NET 10, Blazor Server / Interactive Server and Windows x64. Package **1.0.0** uses protocol 2 and requires Windows agent **1.0.0**. Both components must be upgraded from 0.x.
+Requires .NET 10, Blazor Server / Interactive Server and Windows x64. Package **1.1.0** uses protocol 2 and requires Windows agent **1.1.0**. Both components must be upgraded from 0.x.
 
 ```shell
-dotnet add package SinergiaAI.PrintAgent --version 1.0.0
+dotnet add package SinergiaAI.PrintAgent --version 1.1.0
 ```
 
 ```csharp
@@ -65,8 +65,8 @@ var results = await PrintAgent.GetJobsAsync(new[] { job.Id });
 ## Workstation setup
 
 1. Install [PrintAgent for Windows](https://www.sinergiaai.com/downloads/SinergiaPrint-Setup.exe). The self-contained service starts with Windows.
-2. For a new website, show an **Authorize this website** button calling `await PrintAgent.AuthorizeAsync()` from its click handler.
-3. Verify the exact website origin in the Windows permission dialog and approve it. Return to the application and refresh the connection.
+2. Keep the SinergiaAI PrintAgent tray application running. Calling `StartAsync()` requests native website authorization automatically; no page-specific authorization button is required.
+3. Verify the exact website origin in the native window and approve it. The waiting `StartAsync()` connects automatically. If the request timed out, refresh the connection.
 4. Select a compatible printer and send a test.
 
 Installation and website approval are shared across Windows users and browser profiles. Browser local-network permission may still be requested separately. Approval applies to the entire origin (scheme, hostname and port), not an application login or a page. Applications sharing an origin share its printing access and job history. Approve trusted websites only.
@@ -128,3 +128,12 @@ Upgrade both the package and Windows service. Remove printing-specific server da
 Old queues, credentials and journals are preserved, not imported or automatically resent. Reconcile old work before switching. Use a new browser-storage namespace for direct-mode request records so pages cannot restore old remote batches into the new local queue. Legacy polling requires explicit `Agent:EnableLegacyApi=true` and is disabled by default.
 
 [Migration checklist](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/migration-1.0.md) · [Release guide](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/nuget-publication.md)
+
+
+## Desktop application (1.1.0)
+
+The installer creates a **SinergiaAI PrintAgent** Start menu shortcut and starts its tray application at Windows sign-in. Double-click its icon to open status and service controls. Opening the Start shortcut brings an existing instance forward and attempts to start a stopped service. Windows administrator consent is required for service start/stop.
+
+Closing the window hides it to the tray. **Exit tray app** removes only the icon. **Stop service and exit** stops printing and closes the tray app, preserving pending work. Interrupted delivery remains Unknown and is not automatically resent. Website permissions can be removed in **Authorized websites**.
+
+Desktop menus and permission windows follow the current Windows user's display language: English for English Windows; Portuguese otherwise. Public SDK identifiers, comments and error contracts remain English. The tray's local named-pipe checks do not poll any application API. StartAsync requests a native decision but never authorizes a website itself.

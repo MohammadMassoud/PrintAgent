@@ -1,12 +1,12 @@
 # Integration and operation
 
-PrintAgent 1.0.0 uses WebSocket protocol 2 between the browser and Windows workstation. The default host integration has no printing API, backend key, server database or claim polling.
+PrintAgent 1.1.0 uses WebSocket protocol 2 between the browser and Windows workstation. The default host integration has no printing API, backend key, server database or claim polling.
 
 ## Blazor Server
 
-Install NuGet 1.0.0. Call `builder.Services.AddPrintAgent()` and `app.MapPrintAgent()` with normal host middleware and authentication. Inject `PrintAgent` from `using SinergiaAI.PrintAgent;` in an Interactive Server component. Call `StartAsync` after the first interactive render.
+Install NuGet 1.1.0. Call `builder.Services.AddPrintAgent()` and `app.MapPrintAgent()` with normal host middleware and authentication. Inject `PrintAgent` from `using SinergiaAI.PrintAgent;` in an Interactive Server component. Call `StartAsync` after the first interactive render.
 
-When `Status == PrintAgentStatus.OriginDenied`, show a button whose click calls `AuthorizeAsync()`. The browser opens the installed Windows permission utility. Ask the user to verify the exact website origin, approve it and refresh the connection. Permission is shared by Windows users on the machine. Sites on the same origin share access and job history.
+StartAsync requests approval through the running Windows tray application. The user verifies the exact origin in its native window and allows or denies it. The waiting connection completes automatically after approval; no custom page button or custom-protocol browser launch is needed. If the tray app is closed, open SinergiaAI PrintAgent from Start and refresh. Declined requests have a cooldown of up to two minutes. Permission is shared by Windows users on the machine. Sites on the same origin share access and job history.
 
 Use `IsConnected`, `Printers` or `PrintersInfo`. Persist each request's printer, exact bytes and unique key before `SendAsync` or `SendBatchAsync`. Never replace a key to bypass a submission conflict. Query known jobs with `GetJobsAsync`.
 
@@ -28,7 +28,7 @@ Defaults are sufficient for most hosts. `DataDirectory`, `PublicBaseUrl` and `Le
 
 ## Workstation
 
-Install Windows agent 1.0.0. Its self-contained service starts with Windows. A separate desktop utility handles explicit website authorization over a local Windows named pipe. The `sinergia-printagent` protocol is registered by the installer. Browser local-network permission and agent website approval are separate.
+Install Windows agent 1.1.0. Its self-contained service starts with Windows. A separate desktop utility handles explicit website authorization over a local Windows named pipe. The `sinergia-printagent` protocol is registered by the installer. Browser local-network permission and agent website approval are separate.
 
 Printer visibility follows the service account, normally LocalSystem. Install printers visible to that account or configure `Agent:NetworkPrinters` TCP destinations in the protected ProgramData configuration. `Agent:AllowedOrigins` is an optional workstation-administrator allowlist; configured origins are reapplied at startup. Normal users authorize sites through the Windows dialog.
 
@@ -43,3 +43,12 @@ Limits: 5,000 documents per batch, 2 MiB each, 4 MiB total RAW data per batch, 2
 ## Migration and errors
 
 Follow [migration](migration-1.0.md) before changing an old installation. Display the curated `LastError` fields; [troubleshooting](troubleshooting.md) covers local connectivity, authorization, upgrade and storage. No extra diagnostics endpoint is needed.
+
+
+## Desktop application (1.1.0)
+
+The installer creates a **SinergiaAI PrintAgent** Start menu shortcut and starts its tray application at Windows sign-in. Double-click its icon to open status and service controls. Opening the Start shortcut brings an existing instance forward and attempts to start a stopped service. Windows administrator consent is required for service start/stop.
+
+Closing the window hides it to the tray. **Exit tray app** removes only the icon. **Stop service and exit** stops printing and closes the tray app, preserving pending work. Interrupted delivery remains Unknown and is not automatically resent. Website permissions can be removed in **Authorized websites**.
+
+Desktop menus and permission windows follow the current Windows user's display language: English for English Windows; Portuguese otherwise. Public SDK identifiers, comments and error contracts remain English. The tray's local named-pipe checks do not poll any application API. StartAsync requests a native decision but never authorizes a website itself.

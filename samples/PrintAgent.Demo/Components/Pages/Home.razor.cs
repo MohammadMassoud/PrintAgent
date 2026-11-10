@@ -136,8 +136,6 @@ public partial class Home : IAsyncDisposable
         ? "^XA\n^FO40,40^A0N,35,35^FDPrintAgent sample^FS\n^FO40,100^BY2^BCN,80,Y,N,N^FD123456789^FS\n^XZ"
         : "\u001b@PrintAgent sample\nRAW receipt test\n\n\n\u001dVB\u0000";
 
-    private Task AuthorizeAsync() => PrintAgent.AuthorizeAsync(_lifetime.Token);
-
     private async Task InstallAsync()
     {
         if (_busy) return;

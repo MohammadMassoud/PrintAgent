@@ -15,6 +15,7 @@ builder.Services.AddWindowsService(o => o.ServiceName = "SinergiaPrint Agent");
 builder.Services.AddHttpClient("api", http => http.Timeout = TimeSpan.FromSeconds(45));
 builder.Services.AddSingleton<LocalPrintQueue>();
 builder.Services.AddSingleton<LocalPrinters>();
+builder.Services.AddSingleton<AuthorizationRequests>();
 builder.Services.AddHostedService<LocalQueueWorker>();
 builder.Services.AddHostedService<LocalApproval>();
 builder.Services.AddHostedService<LocalWebSocketBridge>();

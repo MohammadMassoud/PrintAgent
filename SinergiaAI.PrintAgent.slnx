@@ -13,6 +13,7 @@
     <Project Path="src/SinergiaAI.PrintAgent.Server/SinergiaAI.PrintAgent.Server.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/Desktop/Desktop.csproj" />
     <Project Path="tests/ErrorHandling/ErrorHandling.csproj" />
   </Folder>
 </Solution>

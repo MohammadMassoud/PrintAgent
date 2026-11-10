@@ -22,3 +22,12 @@ dotnet run --project samples/PrintAgent.Demo -- --simulate --Demo:ErrorExample=u
 ```
 
 These demonstrate unapproved origins and absent agents without changing system permissions or deleting dependencies. See [migration](../../docs/migration-1.0.md) before using an old installation.
+
+
+## Desktop application (1.1.0)
+
+The installer creates a **SinergiaAI PrintAgent** Start menu shortcut and starts its tray application at Windows sign-in. Double-click its icon to open status and service controls. Opening the Start shortcut brings an existing instance forward and attempts to start a stopped service. Windows administrator consent is required for service start/stop.
+
+Closing the window hides it to the tray. **Exit tray app** removes only the icon. **Stop service and exit** stops printing and closes the tray app, preserving pending work. Interrupted delivery remains Unknown and is not automatically resent. Website permissions can be removed in **Authorized websites**.
+
+Desktop menus and permission windows follow the current Windows user's display language: English for English Windows; Portuguese otherwise. Public SDK identifiers, comments and error contracts remain English. The tray's local named-pipe checks do not poll any application API. StartAsync requests a native decision but never authorizes a website itself.

@@ -43,6 +43,11 @@ if ($service -and $service.Status -ne 'Stopped') {
     Stop-Service -Name $serviceName -ErrorAction Stop
     $service.WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Stopped,[TimeSpan]::FromSeconds(30))
 }
+# Stop only this product's desktop processes before replacing its files.
+$desktopExe = [IO.Path]::GetFullPath((Join-Path $installPath 'approval\SinergiaAI.PrintAgent.Approval.exe'))
+Get-CimInstance Win32_Process -Filter "Name='SinergiaAI.PrintAgent.Approval.exe'" | Where-Object {
+    $_.ExecutablePath -and [IO.Path]::GetFullPath($_.ExecutablePath) -ieq $desktopExe
+} | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction Stop }
 if ($PrepareOnly) { return }
 New-Item -ItemType Directory -Path $installPath -Force | Out-Null
 New-Item -ItemType Directory -Path $dataPath -Force | Out-Null
@@ -72,6 +77,14 @@ New-ItemProperty -Path $protocolPath -Name 'URL Protocol' -Value '' -PropertyTyp
 New-Item -Path "$protocolPath\shell\open\command" -Force | Out-Null
 $approvalExe = Join-Path $installPath 'approval\SinergiaAI.PrintAgent.Approval.exe'
 Set-Item -LiteralPath "$protocolPath\shell\open\command" -Value ('"' + $approvalExe + '" "%1"')
+$runPath = 'HKLM:\Software\Microsoft\Windows\CurrentVersion\Run'
+New-ItemProperty -Path $runPath -Name 'SinergiaAI PrintAgent' -Value ('"' + $approvalExe + '" --background') -PropertyType String -Force | Out-Null
+$shortcutPath = Join-Path ([Environment]::GetFolderPath('CommonPrograms')) 'SinergiaAI PrintAgent.lnk'
+$shell = New-Object -ComObject WScript.Shell
+$shortcut = $shell.CreateShortcut($shortcutPath)
+$shortcut.TargetPath = $approvalExe
+$shortcut.Description = 'SinergiaAI PrintAgent - local printing and website permissions'
+$shortcut.Save()
 Start-Service -Name $serviceName
 (Get-Service -Name $serviceName).WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Running,[TimeSpan]::FromSeconds(30))
 Write-Host 'PrintAgent installed. Return to the application, authorize its website and refresh the connection.'
