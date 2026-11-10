@@ -7,6 +7,7 @@ public sealed record PrintAgentError(string Code, string Message, string Help,
 /// <summary>Stable identifiers for application-specific translations and presentation.</summary>
 public static class PrintAgentErrorCodes
 {
+    public const string LocalStorageUnavailable = "LOCAL_STORAGE_UNAVAILABLE";
     public const string DataDirectoryAccessDenied = "DATA_DIRECTORY_ACCESS_DENIED";
     public const string StorageAccessDenied = "STORAGE_ACCESS_DENIED";
     public const string DatabaseUnavailable = "DATABASE_UNAVAILABLE";

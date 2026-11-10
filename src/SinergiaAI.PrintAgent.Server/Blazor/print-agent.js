@@ -1,71 +1,67 @@
-// Browser bridge. Application enrollment is automatic; no permanent agent token enters this module.
-function apiFailure(response) {
-    if (response.status === 401) return 'AUTHENTICATION_REQUIRED';
-    if (response.status === 403) return 'ACCESS_DENIED';
-    if (response.redirected && /\/(?:account\/)?(?:login|sign-in|signin)(?:\/|$)/i.test(new URL(response.url).pathname)) return 'AUTHENTICATION_REQUIRED';
-    return 'BACKEND_REQUEST_FAILED';
+// Protocol 2. RAW bytes travel directly from this browser to the local Windows service.
+let socket, observer, heartbeat;
+let sequence = 0;
+const pending = new Map();
+function fail(code) { const e = new Error(code); e.code = code; return e; }
+function closePending() {
+    clearInterval(heartbeat);
+    for (const item of pending.values()) { clearTimeout(item.timer); item.reject(fail('AGENT_UNREACHABLE')); }
+    pending.clear();
 }
-function failure(code, message) { return Object.assign(new Error(message), { printAgentCode: code }); }
-
-export async function discover(options, existingProof = null) {
-    const bridge = options.bridgeUrl;
-    const local = { mode: 'cors', credentials: 'omit', cache: 'no-store', targetAddressSpace: 'loopback' };
-    let version = null;
+export async function connect(options, callback) {
+    disconnect(); observer = callback;
     try {
-        const info = await fetch(bridge + '/info', { ...local, signal: AbortSignal.timeout(4000) });
-        if (info.status === 403) return { status: 'origin-denied', error: 'The local service rejected this application origin. Check the API URL configured in the agent.' };
-        if (!info.ok) return { status: 'error', errorCode: 'AGENT_CONFIRMATION_FAILED', error: 'The local service returned an error. Check the Windows service and try again.' };
-        const details = await info.json();
-        if (details.product !== 'SinergiaAI.PrintAgent') return { status: 'incompatible', errorCode: 'LOCAL_PORT_CONFLICT', error: 'The local port is being used by another service.' };
-        version = typeof details.version === 'string' ? details.version : null;
-        if (details.protocol !== 1) return { status: 'incompatible', version, errorCode: 'AGENT_PROTOCOL_INCOMPATIBLE', error: 'The agent protocol is incompatible with this application. Check the integration and agent versions.' };
-    } catch {
-        // A failed fetch cannot reliably distinguish missing service, stopped service or browser denial.
-        return { status: 'unavailable', error: 'The local service did not respond. Check that SinergiaPrint Agent is running and allow local network access in your browser. Download the installer if it is not installed.' };
-    }
-    let phaseCode = 'BACKEND_REQUEST_FAILED';
-    try {
-        const challengeResponse = await fetch(options.browserApiBaseUrl + 'machine/challenge', { credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(10000) });
-        if (!challengeResponse.ok || !challengeResponse.headers.get('content-type')?.includes('application/json'))
-            throw failure(apiFailure(challengeResponse), 'Could not start machine recognition.');
-        const challenge = (await challengeResponse.json()).challenge;
-        phaseCode = 'AGENT_CONFIRMATION_FAILED';
-        const connect = enrollmentCode => fetch(bridge + '/connect', {
-            ...local, method: 'POST', headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ apiBaseUrl: options.agentApiBaseUrl, challenge, enrollmentCode }), signal: AbortSignal.timeout(30000)
+        const info = await fetch(`http://127.0.0.1:${options.port}/info`, { signal: AbortSignal.timeout(5000), credentials: 'omit' });
+        const version = await info.json();
+        if (version.product !== 'SinergiaAI.PrintAgent' || version.protocol !== 2)
+            return { error: 'AGENT_UPDATE_REQUIRED', version: version.version };
+        const current = socket = new WebSocket(`ws://127.0.0.1:${options.port}/ws`);
+        await new Promise((resolve, reject) => {
+            const timer = setTimeout(() => { current.close(); reject(fail('AGENT_UNREACHABLE')); }, 5000);
+            current.onopen = () => { clearTimeout(timer); resolve(); };
+            current.onerror = () => { clearTimeout(timer); reject(fail('AGENT_UNREACHABLE')); };
         });
-        let connected = await connect(null);
-        if (connected.status === 428) {
-            const enrollment = await fetch(options.browserApiBaseUrl + 'machine/enrollment', {
-                credentials: 'same-origin', cache: 'no-store', method: 'POST',
-                headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ enroll: true }),
-                signal: AbortSignal.timeout(10000)
-            });
-            if (!enrollment.ok || !enrollment.headers.get('content-type')?.includes('application/json'))
-                throw failure(apiFailure(enrollment), 'Could not authorize this application.');
-            connected = await connect((await enrollment.json()).code);
-        }
-        if (connected.status === 409) return { status: 'other-application', version, error: 'This installed agent supports only one application. Update it to enable multiple applications on this computer.' };
-        if (connected.status === 403) return { status: 'origin-denied', version, error: 'The local service rejected this application origin. Check the API URL configured in the agent.' };
-        if (!connected.ok) throw failure('AGENT_CONFIRMATION_FAILED', 'The local service was found but could not confirm its connection with this application.');
-        phaseCode = 'BACKEND_REQUEST_FAILED';
-        const proofResponse = await fetch(options.browserApiBaseUrl + 'machine/proof', {
-            credentials: 'same-origin', cache: 'no-store', signal: AbortSignal.timeout(10000),
-            headers: { 'X-PrintAgent-Challenge': challenge, ...(existingProof ? { 'X-PrintAgent-Machine': existingProof } : {}) }
-        });
-        if (!proofResponse.ok || !proofResponse.headers.get('content-type')?.includes('application/json'))
-            throw failure(proofResponse.status === 404 ? 'MACHINE_RECOGNITION_EXPIRED' : apiFailure(proofResponse), 'Machine recognition failed.');
-        return { status: 'connected', version, ...(await proofResponse.json()) };
-    } catch (error) { return { status: 'error', version, errorCode: error.printAgentCode || phaseCode, error: 'Machine recognition failed.' }; }
+        current.onmessage = event => {
+            let response; try { response = JSON.parse(event.data); } catch { current.close(); return; }
+            if (response.eventType === 'jobChanged') { observer?.invokeMethodAsync('JobChanged',response.job).catch(() => {}); return; }
+            const item = pending.get(response.id); if (!item) return;
+            pending.delete(response.id); clearTimeout(item.timer);
+            if (response.error) item.reject(fail(response.error)); else item.resolve(response.result);
+        };
+        current.onclose = () => {
+            if (socket !== current) return;
+            socket = undefined; closePending();
+            observer?.invokeMethodAsync('BridgeClosed').catch(() => {});
+        };
+        let result;
+        try { result = await request('hello'); }
+        catch (e) { return { error: e.code || 'AGENT_UNREACHABLE', version: version.version }; }
+        heartbeat = setInterval(() => {
+            if (document.visibilityState !== 'visible') return;
+            request('ping').catch(() => { if (socket === current) current.close(); });
+        }, 25000);
+        return result;
+    } catch { return { error: 'AGENT_UNREACHABLE' }; }
 }
-
-export async function downloadInstaller(url, proof) {
-    const response = await fetch(url, { credentials: 'same-origin', cache: 'no-store', headers: { 'X-PrintAgent-Machine': proof } });
-    if (!response.ok) throw new Error('Could not generate an installer for this computer. Refresh the connection and try again.');
-    const blob = await response.blob();
-    const objectUrl = URL.createObjectURL(blob);
+export function request(method, data = {}) {
+    if (socket?.readyState !== WebSocket.OPEN) return Promise.reject(fail('AGENT_UNREACHABLE'));
+    return new Promise((resolve, reject) => {
+        const id = String(++sequence);
+        const timer = setTimeout(() => { pending.delete(id); reject(fail('OPERATION_TIMED_OUT')); }, 30000);
+        pending.set(id, { resolve, reject, timer });
+        try { const text = JSON.stringify({ id, method, ...data }); if (new TextEncoder().encode(text).length > 8 * 1024 * 1024) throw fail('REQUEST_INVALID'); socket.send(text); }
+        catch (e) { clearTimeout(timer); pending.delete(id); reject(fail(e.code || 'AGENT_UNREACHABLE')); }
+    });
+}
+export function disconnect() {
+    const previous = socket; socket = undefined; observer = undefined;
+    closePending(); if (previous) previous.close();
+}
+export function authorize(port, revoke = false) {
     const link = document.createElement('a');
-    link.href = objectUrl; link.download = 'SinergiaAI.PrintAgent-Setup.exe';
-    document.body.appendChild(link); link.click(); link.remove();
-    setTimeout(() => URL.revokeObjectURL(objectUrl), 30000);
+    link.href = `sinergia-printagent://authorize?origin=${encodeURIComponent(location.origin)}&port=${port}&revoke=${revoke}`;
+    link.click();
+}
+export function downloadInstaller(url) {
+    const link = document.createElement('a'); link.href = url; link.rel = 'noopener'; link.click();
 }

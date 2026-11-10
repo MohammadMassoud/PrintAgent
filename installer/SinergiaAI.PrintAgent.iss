@@ -2,7 +2,7 @@
 [Setup]
 AppId={{1035B4C9-6996-4AC4-9F03-52D3B53DE48F}
 AppName=SinergiaPrint Agent
-AppVersion=0.5.1
+AppVersion=1.0.0
 AppPublisher=SinergiaAI
 AppSupportURL=https://www.sinergiaai.com/
 DefaultDirName={autopf}\SinergiaPrint
@@ -29,6 +29,11 @@ Name: "english"; MessagesFile: "compiler:Default.isl"
 Source: "..\artifacts\agent\*"; DestDir: "{app}"; Excludes: "appsettings.Local*.json,applications.json,*.pdb,*.db,*.db-shm,*.db-wal,*.lock"; Flags: ignoreversion recursesubdirs createallsubdirs
 Source: "..\scripts\install.ps1"; DestDir: "{tmp}"; DestName: "prepare-install.ps1"; Flags: dontcopy
 
+[Registry]
+Root: HKLM; Subkey: "Software\Classes\sinergia-printagent"; ValueType: string; ValueData: "URL:PrintAgent website authorization"; Flags: uninsdeletekey
+Root: HKLM; Subkey: "Software\Classes\sinergia-printagent"; ValueType: string; ValueName: "URL Protocol"; ValueData: ""
+Root: HKLM; Subkey: "Software\Classes\sinergia-printagent\shell\open\command"; ValueType: string; ValueData: """{app}\approval\SinergiaAI.PrintAgent.Approval.exe"" ""%1"""
+
 [UninstallRun]
 Filename: "{sys}\WindowsPowerShell\v1.0\powershell.exe"; Parameters: "-NoProfile -ExecutionPolicy Bypass -File ""{app}\uninstall.ps1"""; Flags: runhidden waituntilterminated; RunOnceId: "RemoveSinergiaPrintService"
 
@@ -43,7 +48,7 @@ begin
     RaiseException('Automatic configuration was not found. Download the installer again.');
   WizardForm.FinishedLabel.Caption :=
     'PrintAgent was installed as a Windows service. Return to your application and refresh the connection.' + #13#10 + #13#10 +
-    'This installation can serve multiple applications and Windows users. Application connections are configured automatically.';
+    'This installation can serve multiple applications and Windows users. Authorize each website through the Windows PrintAgent dialog.';
 end;
 
 function RunInstallScript(ScriptPath: String; ExtraArguments: String): Boolean;

@@ -7,107 +7,30 @@ using Microsoft.Data.Sqlite;
 using Microsoft.JSInterop;
 using SinergiaAI.PrintAgent;
 using SinergiaAI.PrintAgent.Server;
-
-var root = Path.Combine(Path.GetTempPath(), "printagent-errors-" + Guid.NewGuid().ToString("N"));
+var root = Path.Combine(Path.GetTempPath(),"printagent-direct-errors-" + Guid.NewGuid().ToString("N"));
 Directory.CreateDirectory(root);
-var cases = new (Exception Error, string Code)[]
+await using var fixture = new Fixture(root);
+Require(fixture.App.Services.GetService<PrintStore>() is null,"No backend storage registration");
+foreach (var code in new[] { PrintAgentErrorCodes.AgentUnreachable, PrintAgentErrorCodes.OriginDenied, PrintAgentErrorCodes.AgentUpdateRequired, PrintAgentErrorCodes.LocalStorageUnavailable })
 {
-    (new UnauthorizedAccessException("private storage location"), PrintAgentErrorCodes.StorageAccessDenied),
-    (new FileNotFoundException("private loader detail", "Microsoft.Data.Sqlite"), PrintAgentErrorCodes.SqliteDependencyMissing),
-    (new DllNotFoundException("e_sqlite3"), PrintAgentErrorCodes.SqliteDependencyMissing),
-    (new FileNotFoundException("private loader detail", "Other.Dependency"), PrintAgentErrorCodes.DependencyMissing),
-    (new BadImageFormatException("private architecture detail"), PrintAgentErrorCodes.ArchitectureMismatch),
-    (new TargetInvocationException(new TypeInitializationException("Provider", new SqliteException("private busy detail", 5))), PrintAgentErrorCodes.DatabaseBusy),
-    (new SqliteException("private read-only detail", 8), PrintAgentErrorCodes.DatabaseReadOnly),
-    (new AggregateException(new SqliteException("private disk detail", 13)), PrintAgentErrorCodes.StorageFull),
-    (new SqliteException("private path detail", 14), PrintAgentErrorCodes.DatabaseUnavailable),
-    (new SqliteException("private corruption detail", 11), PrintAgentErrorCodes.DatabaseDamaged),
-    (new InvalidOperationException("Call SQLitePCL.raw.SetProvider() first"), PrintAgentErrorCodes.SqliteProviderUnavailable),
-    (new InvalidOperationException("token=secret-value; private host information"), PrintAgentErrorCodes.BackendInitializationFailed)
-};
-foreach (var test in cases)
-{
-    await using var fixture = new Fixture(root, test.Error);
-    try { await fixture.Agent.StartAsync(); throw new Exception("Expected initialization failure"); }
-    catch (Exception ex) when (ex.Message.StartsWith("The printing backend could not be initialized", StringComparison.Ordinal)) { }
-    Require(fixture.Agent.Status == PrintAgentStatus.ServerUnavailable, "Backend status");
-    Verify(fixture, test.Code);
-    Require(fixture.Log.Errors.Any(e => e.ToString().Contains(test.Error.Message, StringComparison.Ordinal)), "Original exception must remain in the host log");
+    fixture.Browser.Result = new { error = code, version = "1.0.0" };
+    await fixture.Agent.StartAsync();
+    Require(fixture.Agent.LastErrorCode == code && fixture.Agent.LastErrorSteps.Count > 0,"Actionable direct error " + code);
+    Require(fixture.Agent.LastErrorReferenceId?.Length == 12,"Host log reference");
 }
-Console.WriteLine("PASS nested backend failures: storage, SQLite, architecture, busy/read-only/full/damaged databases and unknown failures");
-
-await using (var fixture = new Fixture(root))
-{
-    fixture.State.User = new();
-    try { await fixture.Agent.StartAsync(); throw new Exception("Expected sign-in failure"); }
-    catch (UnauthorizedAccessException) { }
-    Verify(fixture, PrintAgentErrorCodes.AuthenticationRequired);
-    Require(fixture.Agent.Status != PrintAgentStatus.ServerUnavailable, "Sign-in is not a backend initialization failure");
-    fixture.State.User = new(new ClaimsIdentity([], "Test"));
-    try { await fixture.Agent.StartAsync(); throw new Exception("Expected missing identifier"); }
-    catch (UnauthorizedAccessException) { }
-    Verify(fixture, PrintAgentErrorCodes.UserIdentifierMissing);
-    fixture.State.User = Fixture.User();
-    fixture.Browser.Result = new { status = "unavailable", error = "private browser detail" };
-    await fixture.Agent.StartAsync();
-    Verify(fixture, PrintAgentErrorCodes.AgentUnreachable);
-    Require(fixture.Agent.LastErrorSteps.Any(s => s.Contains("does not prove", StringComparison.Ordinal)), "A browser failure must not assert that the service is missing");
-    var reference = fixture.Agent.LastErrorReferenceId;
-    await fixture.Agent.StartAsync();
-    Require(reference == fixture.Agent.LastErrorReferenceId, "Repeated state keeps its reference");
-    using var cancellation = new CancellationTokenSource(); cancellation.Cancel();
-    try { await fixture.Agent.StartAsync(cancellation.Token); throw new Exception("Expected cancellation"); }
-    catch (OperationCanceledException) { }
-    Require(reference == fixture.Agent.LastErrorReferenceId, "Cancellation must not overwrite an actionable error");
-    fixture.Browser.Failure = new TaskCanceledException("private timeout detail");
-    try { await fixture.Agent.StartAsync(); throw new Exception("Expected timeout"); }
-    catch (TaskCanceledException) { }
-    Verify(fixture, PrintAgentErrorCodes.OperationTimedOut);
-    fixture.Browser.Failure = null;
-    fixture.Browser.Result = new { status = "error", errorCode = "AUTHENTICATION_REQUIRED", error = "token=secret-value" };
-    await fixture.Agent.StartAsync();
-    Verify(fixture, PrintAgentErrorCodes.AuthenticationRequired);
-    fixture.Browser.Result = new { status = "error", errorCode = "untrusted-secret-code", error = "private browser detail" };
-    await fixture.Agent.StartAsync();
-    Verify(fixture, PrintAgentErrorCodes.UnexpectedError);
-
-    var store = fixture.App.Services.GetRequiredService<PrintStore>();
-    var credentials = store.CreateInstallation("Error recovery fixture");
-    var discovery = fixture.App.Services.GetRequiredService<PrintDiscoveryService>();
-    var proof = discovery.RegisterMachine(credentials, "Simulated workstation");
-    store.Report(credentials.InstallationId, []);
-    fixture.Browser.Result = new { status = "connected", comprovante = proof.Proof, version = "0.5.1" };
-    await fixture.Agent.StartAsync();
-    Require(fixture.Agent.IsConnected && fixture.Agent.LastError is null && fixture.Agent.LastErrorHelp is null && fixture.Agent.LastErrorSteps.Count == 0, "Recovery clears all stale error fields");
-    await fixture.Agent.UnlinkAsync();
-    Require(fixture.Agent.LastError is null, "Unlink clears errors");
-}
-Console.WriteLine("PASS real facade authentication, browser failures, safe codes, cancellation, reference stability, recovery and unlink");
-
-var blocked = Path.Combine(root, "a-file-not-a-directory");
-File.WriteAllText(blocked, "preserve this file");
-await using (var fixture = new Fixture(root, dataOverride: blocked))
-{
-    try { await fixture.Agent.StartAsync(); throw new Exception("Expected invalid storage"); }
-    catch (Exception ex) when (ex.Message.StartsWith("The printing backend could not be initialized", StringComparison.Ordinal)) { }
-    Verify(fixture, PrintAgentErrorCodes.DataDirectoryInvalid);
-    Require(File.ReadAllText(blocked) == "preserve this file", "Storage failure must preserve files");
-}
-Console.WriteLine("PASS actual invalid storage path; no jobs submitted or files deleted");
-Console.WriteLine("All actionable-error checks passed. Isolated data: " + root);
-
-static void Require(bool condition, string message) { if (!condition) throw new Exception(message); }
-static void Verify(Fixture fixture, string code)
-{
-    var agent = fixture.Agent;
-    Require(agent.LastErrorCode == code, $"Expected {code}, received {agent.LastErrorCode}");
-    Require(agent.LastErrorMessage is not null && agent.LastErrorSteps.Count >= 2 && agent.LastErrorHelp?.StartsWith("1. ", StringComparison.Ordinal) == true, "Numbered resolution guidance");
-    Require(agent.LastErrorReferenceId is { Length: 12 } && fixture.Log.Messages.Any(m => m.Contains(agent.LastErrorReferenceId, StringComparison.Ordinal) && m.Contains(code, StringComparison.Ordinal)), "Log reference correlates with public error");
-    var visible = JsonSerializer.Serialize(agent.LastError);
-    Require(!visible.Contains("private", StringComparison.OrdinalIgnoreCase) && !visible.Contains("secret-value", StringComparison.Ordinal), "No raw exception/browser information in public fields");
-    Require(agent.LastErrorSteps is System.Collections.ObjectModel.ReadOnlyCollection<string>, "Resolution steps are read-only");
-}
-
+fixture.Browser.Result = new { error = "private-secret-code" };
+await fixture.Agent.StartAsync();
+Require(fixture.Agent.LastErrorCode == PrintAgentErrorCodes.UnexpectedError,"Unknown code sanitized");
+Require(!fixture.Agent.LastErrorHelp!.Contains("private-secret"),"No raw error exposure");
+fixture.Browser.Result = new { protocol = 2, version = "1.0.0", machineId = Guid.NewGuid(), machineName = "Fixture", printers = new[] { new PrintPrinter("tcp:test","Test",false) } };
+await fixture.Agent.StartAsync();
+Require(fixture.Agent.IsConnected && fixture.Agent.LastError is null && fixture.Agent.Printers.Count == 1,"Healthy recovery clears errors");
+fixture.Agent.BridgeClosed();
+Require(!fixture.Agent.IsConnected && fixture.Agent.Printers.Count == 0,"Socket close clears connection and printers");
+await fixture.Agent.UnlinkAsync();
+Require(fixture.Agent.LastError is null && fixture.Agent.Status == PrintAgentStatus.Unlinked,"Disconnect clears errors");
+Console.WriteLine("PASS direct facade: no backend, curated errors, safe codes, recovery, socket closure and unlink.");
+static void Require(bool condition,string message) { if (!condition) throw new Exception(message); }
 sealed class Fixture : IAsyncDisposable
 {
     public WebApplication App { get; }
@@ -144,7 +67,7 @@ sealed class State : AuthenticationStateProvider
 sealed class Navigation : NavigationManager { public Navigation() => Initialize("http://localhost:5199/", "http://localhost:5199/"); }
 sealed class Browser : IJSRuntime, IJSObjectReference
 {
-    public object Result { get; set; } = new { status = "unavailable" };
+    public object Result { get; set; } = new { error = "AGENT_UNREACHABLE" };
     public Exception? Failure { get; set; }
     private readonly Dictionary<string, string> _storage = [];
     public ValueTask<T> InvokeAsync<T>(string identifier, object?[]? args) => InvokeAsync<T>(identifier, default, args);
@@ -153,7 +76,7 @@ sealed class Browser : IJSRuntime, IJSObjectReference
         ct.ThrowIfCancellationRequested();
         if (Failure is not null) throw Failure;
         if (identifier == "import") return ValueTask.FromResult((T)(object)this);
-        if (identifier == "discover") return ValueTask.FromResult(JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(Result), new JsonSerializerOptions(JsonSerializerDefaults.Web))!);
+        if (identifier == "connect") return ValueTask.FromResult(JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(Result), new JsonSerializerOptions(JsonSerializerDefaults.Web))!);
         if (identifier == "localStorage.getItem") return ValueTask.FromResult((T)(object?)_storage.GetValueOrDefault((string)args![0]!)!);
         if (identifier == "localStorage.setItem") _storage[(string)args![0]!] = (string)args[1]!;
         if (identifier == "localStorage.removeItem") _storage.Remove((string)args![0]!);

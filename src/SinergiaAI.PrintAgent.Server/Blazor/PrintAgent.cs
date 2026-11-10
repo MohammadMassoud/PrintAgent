@@ -1,261 +1,148 @@
-using System.Text.Json.Serialization;
-using Microsoft.Extensions.Options;
-using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.JSInterop;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace SinergiaAI.PrintAgent;
 
-/// <summary>Manages browser discovery, machine proofs, enrollment and Windows agent version checks.</summary>
-public sealed partial class PrintAgent(
-    IServiceProvider services,
-    IJSRuntime js,
-    IOptions<PrintAgentOptions> options,
-    NavigationManager navigation,
-    ILogger<PrintAgent> logger) : IAsyncDisposable
+/// <summary>Direct browser-to-agent printing. The host does not store print jobs or credentials.</summary>
+public sealed partial class PrintAgent(IServiceProvider services, IJSRuntime js, IOptions<PrintAgentOptions> options, NavigationManager navigation, ILogger<PrintAgent> logger) : IAsyncDisposable
 {
-    private sealed class BackendInitializationException(Exception inner)
-        : Exception("The printing backend could not be initialized. Check the host log, SQLite dependencies and data directory permissions.", inner);
-    private PrintAgentBackend printing
-    {
-        get
-        {
-            try { return services.GetRequiredService<PrintAgentBackend>(); }
-            catch (Exception ex) { throw new BackendInitializationException(ex); }
-        }
-    }
-    private readonly SemaphoreSlim _gate = new(1, 1);
+    // Retained for the legacy error classifier; the direct transport never initializes a backend.
+    private sealed class BackendInitializationException(Exception inner) : Exception("Legacy printing backend initialization failed.", inner);
     private IJSObjectReference? _browser;
-    private MachineConnectionState? _connection;
-    private string? _storageKey;
-    private bool _machineConfirmed;
+    private DotNetObjectReference<PrintAgent>? _callback;
+    private readonly SemaphoreSlim _gate = new(1,1);
     public IReadOnlyList<string> Printers { get; private set; } = Array.Empty<string>();
     public IReadOnlyList<PrintPrinter> PrintersInfo { get; private set; } = Array.Empty<PrintPrinter>();
     public PrintAgentStatus Status { get; private set; } = PrintAgentStatus.NotStarted;
-    public bool IsConnected => _machineConfirmed && Status == PrintAgentStatus.Connected && RecentContact;
-    public bool MachineConfirmed => _machineConfirmed;
-    public Guid? DeviceId => _connection?.Installation.Id;
-    public string? MachineName => _connection?.MachineName;
+    public bool IsConnected => Status == PrintAgentStatus.Connected;
+    public bool MachineConfirmed => IsConnected;
+    public Guid? DeviceId { get; private set; }
+    public string? MachineName { get; private set; }
     public string? InstalledVersion { get; private set; }
     public string AvailableVersion => options.Value.AvailableAgentVersion;
-    public bool UpdateAvailable { get; private set; }
-    public string BrowserStorageKey => _storageKey ?? options.Value.BrowserStoragePrefix + "machine.v1";
+    public bool UpdateAvailable => Version.TryParse(InstalledVersion,out var installed) && Version.TryParse(AvailableVersion,out var available) && installed < available;
+    public string BrowserStorageKey => options.Value.BrowserStoragePrefix + "machine.v2";
     public event Action? OnStatusChanged;
     public event Action? OnGetPrinters;
-    private bool RecentContact => _connection?.Installation.LastSeenAt is { } last
-        && DateTimeOffset.UtcNow - last < TimeSpan.FromSeconds(60);
-
-    private void UpdatePrinters()
-    {
-        var printers = _machineConfirmed ? _connection?.Installation.Printers.Select(p => new PrintPrinter(p.Id, p.Name, p.IsDefault)).ToArray() ?? [] : [];
-        if (PrintersInfo.SequenceEqual(printers)) return;
-        PrintersInfo = Array.AsReadOnly(printers);
-        Printers = Array.AsReadOnly(printers.Select(p => p.Name).ToArray());
-    }
-
-    // Subscribers are UI observers. A disposed/faulty observer must not invalidate a successful operation.
+    public event Action<PrintJob>? OnJobChanged;
+    private bool _disposed;
+    private sealed record BridgeInfo(int Protocol, string? Version, Guid? MachineId, string? MachineName, PrintPrinter[]? Printers, string? Error);
     private void Notify(Action? subscribers)
     {
-        if (subscribers is null) return;
+        if (_disposed || subscribers is null) return;
         foreach (Action subscriber in subscribers.GetInvocationList())
-            try { subscriber(); }
-            catch (Exception ex) { logger.LogWarning(ex, "A print connection observer failed."); }
+            try { subscriber(); } catch (Exception ex) { logger.LogWarning(ex,"Print connection observer failed."); }
     }
-
-    public async Task StartAsync(CancellationToken ct = default) =>
-        _ = await DiscoverAsync(new Uri(navigation.BaseUri), ct);
-
-    public async Task DownloadInstallerAsync(CancellationToken ct = default) =>
-        _ = await DownloadInstallerForAsync(new Uri(navigation.BaseUri), ct);
-
+    private async Task PrepareAsync(CancellationToken ct)
+    {
+        _ = services;
+        _callback ??= DotNetObjectReference.Create(this);
+        _browser ??= await js.InvokeAsync<IJSObjectReference>("import",ct,new Uri(new Uri(navigation.BaseUri),options.Value.ApiPrefix.Trim('/') + "/browser.js?v=10").AbsoluteUri);
+    }
+    public async Task StartAsync(CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try
+        {
+            await PrepareAsync(ct);
+            var info = await _browser!.InvokeAsync<BridgeInfo>("connect",ct,new { port = options.Value.LocalBridgePort },_callback);
+            InstalledVersion = info.Version;
+            if (info.Error is not null)
+            {
+                SetDisconnected(info.Error == PrintAgentErrorCodes.OriginDenied ? PrintAgentStatus.OriginDenied : info.Error == PrintAgentErrorCodes.AgentUpdateRequired ? PrintAgentStatus.Incompatible : PrintAgentStatus.Unavailable);
+                RecordError(SafeCode(info.Error)); return;
+            }
+            if (info.Protocol != 2 || info.MachineId is null) throw new PrintAgentOperationException(PrintAgentErrorCodes.ProtocolIncompatible,"Update the Windows agent.");
+            DeviceId = info.MachineId; MachineName = info.MachineName; SetPrinters(info.Printers ?? []);
+            Status = PrintAgentStatus.Connected; ClearError();
+        }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { SetDisconnected(PrintAgentStatus.Error); RecordTransportError(ex); throw; }
+        finally { _gate.Release(); Notify(OnStatusChanged); }
+    }
     public async Task RefreshPrintersAsync(CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
-        var previousPrinters = PrintersInfo;
-        var previousStatus = Status;
-        try
-        {
-            if (_connection is null) return;
-            _connection = await printing.GetConnectionAsync(_connection.Installation.Id, ct);
-            if (_connection is null)
-            {
-                _machineConfirmed = false;
-                Status = PrintAgentStatus.Unavailable;
-                throw new PrintAgentOperationException(PrintAgentErrorCodes.MachineRecognitionExpired, "Recognize this computer again.");
-            }
-            if (_machineConfirmed)
-            {
-                Status = RecentContact ? PrintAgentStatus.Connected : PrintAgentStatus.AwaitingApi;
-                RecordDiscoveryError(Status, null);
-            }
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
-        {
-            RecordError(ex);
-            Status = ex is BackendInitializationException ? PrintAgentStatus.ServerUnavailable : PrintAgentStatus.Error;
-            throw;
-        }
-        finally
-        {
-            UpdatePrinters();
-            _gate.Release();
-            if (previousStatus != Status) Notify(OnStatusChanged);
-            if (!ReferenceEquals(previousPrinters, PrintersInfo)) Notify(OnGetPrinters);
-        }
-    }
-
-    private Guid CurrentDevice() => DeviceId ?? throw new PrintAgentOperationException(PrintAgentErrorCodes.MachineRecognitionExpired, "Recognize this computer before using printing.");
-
-    public async Task<PrintJob> SendAsync(string printerId, byte[] content, string idempotencyKey, CancellationToken ct = default) =>
-        (await SendBatchAsync(new[] { new PrintDocument(printerId, content, idempotencyKey) }, ct))[0];
-
-    public async Task<IReadOnlyList<PrintJob>> SendBatchAsync(IReadOnlyList<PrintDocument> documents, CancellationToken ct = default)
-    {
-        await _gate.WaitAsync(ct);
-        try
-        {
-            if (!IsConnected) throw new PrintAgentOperationException(PrintAgentErrorCodes.AgentConfirmationFailed, "Recognize the connected agent on this computer before printing.");
-            var jobs = (await printing.SubmitBatchAsync(CurrentDevice(), documents, ct)).Select(PrintJob.FromContract).ToArray();
-            ClearError();
-            return jobs;
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { RecordError(ex); throw; }
+        try { var info = await RequestAsync<BridgeInfo>("printers",new { },ct); SetPrinters(info.Printers ?? []); ClearError(); }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { RecordTransportError(ex); throw; }
         finally { _gate.Release(); }
     }
-
-    public async Task<IReadOnlyList<PrintJob>> GetJobsAsync(IReadOnlyCollection<Guid> jobIds, CancellationToken ct = default)
+    public async Task<PrintJob> SendAsync(string printerId,byte[] content,string idempotencyKey,CancellationToken ct = default) => (await SendBatchAsync(new[] {new PrintDocument(printerId,content,idempotencyKey)},ct))[0];
+    public async Task<IReadOnlyList<PrintJob>> SendBatchAsync(IReadOnlyList<PrintDocument> documents,CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct);
-        try { return (await printing.GetJobsAsync(CurrentDevice(), jobIds, ct)).Select(PrintJob.FromContract).ToArray(); }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { RecordError(ex); throw; }
-        finally { _gate.Release(); }
-    }
-    private sealed record BrowserDiscoveryResult(string Status, [property: JsonPropertyName("comprovante")] string? Proof, string? Version, string? Error, string? ErrorCode = null);
-
-    private async Task PrepareBrowserAsync(Uri application, CancellationToken ct)
-    {
-        _storageKey ??= await printing.GetBrowserStorageKeyAsync();
-        _browser ??= await js.InvokeAsync<IJSObjectReference>("import", ct, printing.GetBrowserModuleUrl(application));
-        var saved = await js.InvokeAsync<string?>("localStorage.getItem", ct, _storageKey);
-        _connection = string.IsNullOrWhiteSpace(saved) ? null : await printing.RecognizeMachineAsync(saved, ct);
-    }
-
-    internal async Task<DiscoveryResult> DiscoverAsync(Uri application, CancellationToken ct = default)
-    {
-        await _gate.WaitAsync(ct);
-        var previousPrinters = PrintersInfo;
-        try
-        {
-            await PrepareBrowserAsync(application, ct);
-            var result = await _browser!.InvokeAsync<BrowserDiscoveryResult>("discover", ct,
-                printing.GetDiscoveryOptions(application), _connection?.Proof);
-            if (result.Status == "connected" && !string.IsNullOrWhiteSpace(result.Proof))
-            {
-                _connection = await printing.RecognizeMachineAsync(result.Proof, ct)
-                    ?? throw new PrintAgentOperationException(PrintAgentErrorCodes.MachineRecognitionExpired, "Machine recognition expired. Recognize this computer again.");
-                await js.InvokeVoidAsync("localStorage.setItem", ct, _storageKey, _connection.Proof);
-            }
-            // Only the original owner may import a legacy link. Migration alone does not prove local presence.
-            if (_connection is null)
-            {
-                var legacyKey = await printing.GetLegacyStorageKeyAsync();
-                var legacy = await js.InvokeAsync<string?>("localStorage.getItem", ct, legacyKey);
-                if (Guid.TryParse(legacy, out var id)) _connection = await printing.MigrateConnectionAsync(id, ct);
-                if (_connection is not null)
-                    await js.InvokeVoidAsync("localStorage.setItem", ct, _storageKey, _connection.Proof);
-            }
-            var recent = _connection?.Installation.LastSeenAt is { } last
-                && DateTimeOffset.UtcNow - last < TimeSpan.FromSeconds(60);
-            var state = result.Status switch
-            {
-                "connected" => recent ? PrintAgentStatus.Connected : PrintAgentStatus.AwaitingApi,
-                "origin-denied" => PrintAgentStatus.OriginDenied,
-                "incompatible" => PrintAgentStatus.Incompatible,
-                "other-application" => PrintAgentStatus.OtherApplication,
-                "unavailable" => PrintAgentStatus.Unavailable,
-                _ => PrintAgentStatus.Error
-            };
-            var available = options.Value.AvailableAgentVersion;
-            // /info reports the Windows executable version, independently of the NuGet package version.
-            var update = Version.TryParse(result.Version, out var installed)
-                && Version.TryParse(available, out var released) && installed < released;
-            _machineConfirmed = state is PrintAgentStatus.Connected or PrintAgentStatus.AwaitingApi;
-            Status = state;
-            InstalledVersion = result.Version;
-            UpdateAvailable = update;
-            RecordDiscoveryError(state, result.ErrorCode);
-            return new(state, _connection, result.Version, available, update, LastErrorMessage);
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
-        {
-            _machineConfirmed = false;
-            RecordError(ex);
-            Status = ex is BackendInitializationException ? PrintAgentStatus.ServerUnavailable : PrintAgentStatus.Error;
-            InstalledVersion = null;
-            UpdateAvailable = false;
-            throw;
-        }
-        finally
-        {
-            UpdatePrinters();
-            _gate.Release();
-            Notify(OnStatusChanged);
-            if (!ReferenceEquals(previousPrinters, PrintersInfo)) Notify(OnGetPrinters);
-        }
-    }
-
-    internal async Task<MachineConnectionState> DownloadInstallerForAsync(Uri application, CancellationToken ct = default)
-    {
-        // Rediscover before downloading to reuse the existing installation on this computer.
-        var result = await DiscoverAsync(application, ct);
-        if (result.Status is PrintAgentStatus.OtherApplication or PrintAgentStatus.OriginDenied)
-            throw new InvalidOperationException(result.Message);
         await _gate.WaitAsync(ct);
         try
         {
-            if (_connection is null)
-            {
-                _connection = await printing.CreateConnectionAsync("Print workstation", ct);
-                await js.InvokeVoidAsync("localStorage.setItem", ct, _storageKey, _connection.Proof);
-            }
-            await _browser!.InvokeVoidAsync("downloadInstaller", ct,
-                printing.GetInstallerUrl(application, _connection.Installation.Id), _connection.Proof);
-            ClearError();
-            return _connection;
+            if (documents.Count is < 1 or > 5000 || documents.Any(d => d.Content is null || d.Content.Length is < 1 or > 2 * 1024 * 1024 || string.IsNullOrWhiteSpace(d.IdempotencyKey) || d.IdempotencyKey.Length > 200) || documents.Sum(d => (long)d.Content.Length) > 4 * 1024 * 1024)
+                throw new PrintAgentOperationException(PrintAgentErrorCodes.RequestInvalid,"Submit 1–5000 documents, at most 2 MiB each and 4 MiB per batch, with stable request keys.");
+            var jobs = await RequestAsync<PrintJob[]>("enqueue",new { documents = documents.Select(d => new { d.PrinterId, contentBase64 = Convert.ToBase64String(d.Content), d.IdempotencyKey }) },ct);
+            ClearError(); return jobs;
         }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { RecordError(ex); throw; }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { RecordTransportError(ex); throw; }
         finally { _gate.Release(); }
     }
-
+    public async Task<IReadOnlyList<PrintJob>> GetJobsAsync(IReadOnlyCollection<Guid> jobIds,CancellationToken ct = default)
+    {
+        await _gate.WaitAsync(ct);
+        try { var jobs = await RequestAsync<PrintJob[]>("jobs",new { jobIds },ct); ClearError(); return jobs; }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { RecordTransportError(ex); throw; }
+        finally { _gate.Release(); }
+    }
+    private async Task<T> RequestAsync<T>(string method,object data,CancellationToken ct)
+    {
+        if (!IsConnected || _browser is null) throw new PrintAgentOperationException(PrintAgentErrorCodes.AgentUnreachable,"Connect to the local agent first.");
+        return await _browser.InvokeAsync<T>("request",ct,method,data);
+    }
+    /// <summary>Opens the Windows authorization dialog for this website. Call from a user action.</summary>
+    public async Task AuthorizeAsync(CancellationToken ct = default)
+    { await PrepareAsync(ct); await _browser!.InvokeVoidAsync("authorize",ct,options.Value.LocalBridgePort,false); }
+    /// <summary>Opens the Windows dialog to revoke this website's machine-wide access.</summary>
+    public async Task RevokeAuthorizationAsync(CancellationToken ct = default)
+    { await PrepareAsync(ct); await _browser!.InvokeVoidAsync("authorize",ct,options.Value.LocalBridgePort,true); }
+    public async Task DownloadInstallerAsync(CancellationToken ct = default)
+    { await PrepareAsync(ct); await _browser!.InvokeVoidAsync("downloadInstaller",ct,options.Value.InstallerUrl); }
     public async Task UnlinkAsync(CancellationToken ct = default)
     {
-        await _gate.WaitAsync(ct);
-        try
-        {
-            if (_connection is not null) await printing.ForgetConnectionAsync(_connection.Installation.Id, ct);
-            if (_storageKey is not null) await js.InvokeVoidAsync("localStorage.removeItem", ct, _storageKey);
-            _connection = null;
-            _machineConfirmed = false;
-            Status = PrintAgentStatus.Unlinked;
-            ClearError();
-            InstalledVersion = null;
-            UpdateAvailable = false;
-        }
-        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { RecordError(ex); throw; }
-        finally
-        {
-            var previousPrinters = PrintersInfo;
-            UpdatePrinters();
-            _gate.Release();
-            Notify(OnStatusChanged);
-            if (!ReferenceEquals(previousPrinters, PrintersInfo)) Notify(OnGetPrinters);
-        }
+        if (_browser is not null) await _browser.InvokeVoidAsync("disconnect",ct);
+        SetDisconnected(PrintAgentStatus.Unlinked); ClearError(); Notify(OnStatusChanged);
     }
-
+    [JSInvokable] public void JobChanged(PrintJob job)
+    {
+        if (_disposed || !IsConnected || job.InstallationId != DeviceId || OnJobChanged is null) return;
+        foreach (Action<PrintJob> subscriber in OnJobChanged.GetInvocationList())
+            try { subscriber(job); } catch (Exception ex) { logger.LogWarning(ex,"Print job observer failed."); }
+    }
+    [JSInvokable] public void BridgeClosed()
+    { if (_disposed || Status == PrintAgentStatus.OriginDenied) return; SetDisconnected(PrintAgentStatus.Unavailable); RecordError(PrintAgentErrorCodes.AgentUnreachable); Notify(OnStatusChanged); }
+    private void SetDisconnected(PrintAgentStatus status) { Status = status; DeviceId = null; MachineName = null; SetPrinters([]); }
+    private void SetPrinters(PrintPrinter[] printers)
+    {
+        if (PrintersInfo.SequenceEqual(printers)) return;
+        PrintersInfo = Array.AsReadOnly(printers); Printers = Array.AsReadOnly(printers.Select(p => p.Name).ToArray()); Notify(OnGetPrinters);
+    }
+    private static string SafeCode(string code) => code switch
+    {
+        PrintAgentErrorCodes.OriginDenied or PrintAgentErrorCodes.AgentUpdateRequired or PrintAgentErrorCodes.ProtocolIncompatible
+            or PrintAgentErrorCodes.AgentUnreachable or PrintAgentErrorCodes.RequestInvalid or PrintAgentErrorCodes.OperationTimedOut
+            or PrintAgentErrorCodes.LocalStorageUnavailable => code,
+        _ => PrintAgentErrorCodes.UnexpectedError
+    };
+    private void RecordTransportError(Exception ex)
+    {
+        if (ex is PrintAgentOperationException operation) { RecordError(SafeCode(operation.Code)); return; }
+        if (ex is JSException)
+        {
+            var code = new[] { PrintAgentErrorCodes.OriginDenied, PrintAgentErrorCodes.AgentUnreachable, PrintAgentErrorCodes.RequestInvalid, PrintAgentErrorCodes.OperationTimedOut, PrintAgentErrorCodes.LocalStorageUnavailable }.FirstOrDefault(c => ex.Message.Split('\n')[0].Trim().EndsWith(c,StringComparison.Ordinal));
+            if (code is not null) { if (code is PrintAgentErrorCodes.OriginDenied or PrintAgentErrorCodes.AgentUnreachable) SetDisconnected(code == PrintAgentErrorCodes.OriginDenied ? PrintAgentStatus.OriginDenied : PrintAgentStatus.Unavailable); RecordError(code); return; }
+        }
+        RecordError(ex);
+    }
     public async ValueTask DisposeAsync()
     {
+        _disposed = true;
         if (_browser is not null)
-            try { await _browser.DisposeAsync(); } catch (JSDisconnectedException) { }
+            try { await _browser.InvokeVoidAsync("disconnect"); await _browser.DisposeAsync(); } catch (JSDisconnectedException) { } catch (TaskCanceledException) { }
+        _callback?.Dispose();
     }
 }

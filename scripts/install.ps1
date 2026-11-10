@@ -25,14 +25,14 @@ elseif ($InstallationId -or $AgentToken -or $ApiBaseUrl) {
 elseif (Test-Path -LiteralPath $sourceConfig) { $config = Get-Content -LiteralPath $sourceConfig -Raw | ConvertFrom-Json }
 elseif (Test-Path -LiteralPath $configPath) { $config = Get-Content -LiteralPath $configPath -Raw | ConvertFrom-Json }
 else {
-    # Applications enroll automatically after installation; no manual credentials are required.
+    # Websites are authorized locally after installation; no API credentials are required.
     $config = @{Agent=@{ApiBaseUrl='';InstallationId=[Guid]::Empty.ToString();Token='';NetworkPrinters=@()}}
 }
 $agentConfig = $config.Agent
 $hasApplication = -not [string]::IsNullOrWhiteSpace([string]$agentConfig.ApiBaseUrl) -or
     -not [string]::IsNullOrWhiteSpace([string]$agentConfig.Token) -or
     (-not [string]::IsNullOrWhiteSpace([string]$agentConfig.InstallationId) -and [string]$agentConfig.InstallationId -ne [Guid]::Empty.ToString())
-if ($hasApplication) {
+if ($hasApplication -and $agentConfig.EnableLegacyApi) {
     $uri = [Uri]$agentConfig.ApiBaseUrl
     if (-not $uri.IsAbsoluteUri -or ($uri.Scheme -ne 'https' -and -not ($uri.Scheme -eq 'http' -and $uri.IsLoopback))) { throw 'Use HTTPS; HTTP is allowed only on loopback.' }
     if ([Guid]$agentConfig.InstallationId -eq [Guid]::Empty -or [string]::IsNullOrWhiteSpace([string]$agentConfig.Token)) { throw 'Invalid credentials.' }
@@ -65,6 +65,13 @@ if ($service) { Invoke-Sc -ScArguments @('config',$serviceName,'binPath=',"`"$ex
 else { Invoke-Sc -ScArguments @('create',$serviceName,'binPath=',"`"$exePath`"",'start=','delayed-auto') }
 Invoke-Sc -ScArguments @('failure',$serviceName,'reset=','86400','actions=','restart/5000/restart/15000/restart/30000')
 Invoke-Sc -ScArguments @('failureflag',$serviceName,'1')
+$protocolPath = 'HKLM:\Software\Classes\sinergia-printagent'
+New-Item -Path $protocolPath -Force | Out-Null
+Set-Item -LiteralPath $protocolPath -Value 'URL:PrintAgent website authorization'
+New-ItemProperty -Path $protocolPath -Name 'URL Protocol' -Value '' -PropertyType String -Force | Out-Null
+New-Item -Path "$protocolPath\shell\open\command" -Force | Out-Null
+$approvalExe = Join-Path $installPath 'approval\SinergiaAI.PrintAgent.Approval.exe'
+Set-Item -LiteralPath "$protocolPath\shell\open\command" -Value ('"' + $approvalExe + '" "%1"')
 Start-Service -Name $serviceName
 (Get-Service -Name $serviceName).WaitForStatus([System.ServiceProcess.ServiceControllerStatus]::Running,[TimeSpan]::FromSeconds(30))
-Write-Host 'PrintAgent installed. Verify API connectivity before printing.'
+Write-Host 'PrintAgent installed. Return to the application, authorize its website and refresh the connection.'

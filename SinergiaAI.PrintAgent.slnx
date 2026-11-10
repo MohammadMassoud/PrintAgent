@@ -6,6 +6,7 @@
   <Folder Name="/src/">
     <Project Path="src/SinergiaAI.PrintAgent.Agent/SinergiaAI.PrintAgent.Agent.csproj" />
     <Project Path="src/SinergiaAI.PrintAgent.Api/SinergiaAI.PrintAgent.Api.csproj" />
+    <Project Path="src/SinergiaAI.PrintAgent.Approval/SinergiaAI.PrintAgent.Approval.csproj" />
     <Project Path="src/SinergiaAI.PrintAgent.Bootstrap/SinergiaAI.PrintAgent.Bootstrap.csproj" />
     <Project Path="src/SinergiaAI.PrintAgent.Client/SinergiaAI.PrintAgent.Client.csproj" />
     <Project Path="src/SinergiaAI.PrintAgent.Contracts/SinergiaAI.PrintAgent.Contracts.csproj" />

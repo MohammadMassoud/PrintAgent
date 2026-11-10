@@ -4,7 +4,7 @@
     <IsPackable>true</IsPackable>
     <PackageId>SinergiaAI.PrintAgent</PackageId>
     <Title>PrintAgent</Title>
-    <Description>Windows RAW printing for Blazor Server and .NET 10 applications. Includes an ASP.NET Core API, persistent SQLite queue, typed client and automatic agent enrollment. Send ZPL, ESC/POS and RAW commands through one Windows agent shared by multiple applications.</Description>
+    <Description>Windows RAW printing for Blazor Server and .NET 10 applications. Connects the browser directly to a Windows WebSocket agent with a durable local queue and website authorization. Send ZPL, ESC/POS and RAW commands through one Windows agent shared by multiple applications.</Description>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludePrintAgentLibraries</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
   <ItemGroup>

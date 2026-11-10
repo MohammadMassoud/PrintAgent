@@ -1,3 +1,5 @@
+> Legacy remote-API types retained for controlled maintenance. New integrations should use the direct WebSocket facade documented in the [main README](../../README.md).
+
 # SinergiaAI.PrintAgent.Contracts
 
 Internal component included in the single **SinergiaAI.PrintAgent** NuGet package. This project no longer produces a separate package. See [the unified package README](../SinergiaAI.PrintAgent.Server/README.md).

@@ -2,6 +2,9 @@ namespace SinergiaAI.PrintAgent.Agent;
 
 public sealed class AgentOptions
 {
+    public bool EnableLegacyApi { get; set; }
+    public bool OnlyNetworkPrinters { get; set; }
+    public List<string> AllowedOrigins { get; set; } = [];
     public string ApiBaseUrl { get; set; } = "";
     public Guid InstallationId { get; set; }
     public string Token { get; set; } = "";

@@ -31,7 +31,7 @@ BASE = f'http://127.0.0.1:{port()}/'
 def start(args, env, name):
     log = WORK / (name + '.log')
     handle = log.open('w'); handles.append(handle)
-    proc = subprocess.Popen(args, cwd=ROOT, env={**os.environ, **env}, stdout=handle, stderr=subprocess.STDOUT)
+    proc = subprocess.Popen(args, cwd=ROOT, env={**os.environ, 'SINERGIAPRINT_Agent__EnableLegacyApi':'true', **env}, stdout=handle, stderr=subprocess.STDOUT)
     processes.append(proc)
     return proc, log
 

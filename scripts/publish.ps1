@@ -14,6 +14,8 @@ if (Test-Path -LiteralPath $output) {
 }
 & dotnet publish (Join-Path $root 'src\SinergiaAI.PrintAgent.Agent') -c Release -r win-x64 --self-contained true -o $output
 if ($LASTEXITCODE -ne 0) { throw 'Publishing failed.' }
+& dotnet publish (Join-Path $root 'src\SinergiaAI.PrintAgent.Approval') -c Release -r win-x64 --self-contained true -o (Join-Path $output 'approval')
+if ($LASTEXITCODE -ne 0) { throw 'Publishing the Windows authorization utility failed.' }
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'install.ps1') -Destination $output -Force
 Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'uninstall.ps1') -Destination $output -Force
 Set-Content -LiteralPath (Join-Path $output 'install.bat') -Encoding ASCII -Value '@echo off', 'cd /d "%~dp0"', 'powershell -NoProfile -ExecutionPolicy Bypass -File ".\install.ps1"', 'pause'

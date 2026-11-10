@@ -10,7 +10,6 @@ public partial class Home : IAsyncDisposable
 {
     [Inject] private IJSRuntime JS { get; set; } = default!;
     private readonly CancellationTokenSource _lifetime = new();
-    private Task? _polling;
     private bool _loading = true, _busy, _refreshing, _disposed;
     private string _format = "ZPL", _content = "^XA\n^CI28\n^FO40,40^A0N,35,35^FDPrintAgent sample^FS\n^FO40,100^BY2^BCN,80,Y,N,N^FD123456789^FS\n^XZ";
     private string? _printerId, _error, _message;
@@ -22,10 +21,9 @@ public partial class Home : IAsyncDisposable
     private Guid? _restoredDevice;
     private RequestPlan? _request;
     private List<PrintJob> _jobs = [];
-    private DateTimeOffset _lastDiscovery;
     private IEnumerable<PrintPrinter> AvailablePrinters => PrintAgent.PrintersInfo.Where(p => !Mode.Simulated
         || p.Name == "Simulated TCP printer" && p.Id.StartsWith("tcp:tcp://127.0.0.1:", StringComparison.Ordinal));
-    private string StorageKey => "PrintAgent.Demo.Request." + PrintAgent.DeviceId;
+    private string StorageKey => "PrintAgent.Demo.Direct.Request." + PrintAgent.DeviceId;
     private bool CanCreateRequest => _request is null || _jobs.Count == _request.Quantity && _jobs.All(IsFinal);
     private static bool IsFinal(PrintJob job) => job.Status is PrintJobStatus.Sent or PrintJobStatus.Failed or PrintJobStatus.Unknown;
     private sealed record RequestPlan(Guid Id, string PrinterId, string ContentBase64, int Quantity, List<Guid> Jobs);
@@ -33,9 +31,11 @@ public partial class Home : IAsyncDisposable
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
         if (!firstRender) return;
+        PrintAgent.OnStatusChanged += ConnectionChanged;
+        PrintAgent.OnJobChanged += JobChanged;
+        Capture.Changed += ConnectionChanged;
         await ConnectAsync();
         _loading = false;
-        _polling = PollAsync();
         StateHasChanged();
     }
 
@@ -46,7 +46,6 @@ public partial class Home : IAsyncDisposable
         try
         {
             await PrintAgent.StartAsync(_lifetime.Token);
-            _lastDiscovery = DateTimeOffset.UtcNow;
             await RestoreAsync();
             await RefreshJobsAsync();
             _error = null;
@@ -56,30 +55,16 @@ public partial class Home : IAsyncDisposable
         finally { _refreshing = false; }
     }
 
-    private async Task PollAsync()
+    private void ConnectionChanged() { if (!_disposed) _ = InvokeAsync(StateHasChanged); }
+    private void JobChanged(PrintJob job)
     {
-        try
+        if (_disposed) return;
+        _ = InvokeAsync(() =>
         {
-            using var timer = new PeriodicTimer(TimeSpan.FromSeconds(3));
-            while (await timer.WaitForNextTickAsync(_lifetime.Token))
-                await InvokeAsync(async () =>
-                {
-                    if (_busy || _refreshing || _disposed) return;
-                    // Configuration and sign-in failures need user/admin action, not a retry loop.
-                    if (PrintAgent.Status == PrintAgentStatus.ServerUnavailable
-                        || PrintAgent.LastErrorCode is PrintAgentErrorCodes.AuthenticationRequired or PrintAgentErrorCodes.UserIdentifierMissing or PrintAgentErrorCodes.AccessDenied) return;
-                    if (!PrintAgent.MachineConfirmed || DateTimeOffset.UtcNow - _lastDiscovery > TimeSpan.FromSeconds(30))
-                        await ConnectAsync();
-                    else
-                    {
-                        try { await PrintAgent.RefreshPrintersAsync(_lifetime.Token); await RefreshJobsAsync(); }
-                        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
-                        catch (Exception ex) { _error = PrintAgent.LastErrorMessage ?? ex.Message; }
-                    }
-                    StateHasChanged();
-                });
-        }
-        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
+            var index = _jobs.FindIndex(j => j.Id == job.Id);
+            if (index >= 0) _jobs[index] = job;
+            StateHasChanged();
+        });
     }
 
     private async Task RestoreAsync()
@@ -131,6 +116,7 @@ public partial class Home : IAsyncDisposable
             _jobs = (await PrintAgent.SendBatchAsync(documents, _lifetime.Token)).ToList();
             _request = _request with { Jobs = _jobs.Select(j => j.Id).ToList() };
             await SaveAsync();
+            await RefreshJobsAsync();
             _message = $"{_jobs.Count} job(s) queued. Retrying this request reuses its original keys.";
         }
         catch (Exception ex) { _error = PrintAgent.LastErrorMessage ?? ex.Message; }
@@ -150,6 +136,8 @@ public partial class Home : IAsyncDisposable
         ? "^XA\n^FO40,40^A0N,35,35^FDPrintAgent sample^FS\n^FO40,100^BY2^BCN,80,Y,N,N^FD123456789^FS\n^XZ"
         : "\u001b@PrintAgent sample\nRAW receipt test\n\n\n\u001dVB\u0000";
 
+    private Task AuthorizeAsync() => PrintAgent.AuthorizeAsync(_lifetime.Token);
+
     private async Task InstallAsync()
     {
         if (_busy) return;
@@ -163,8 +151,9 @@ public partial class Home : IAsyncDisposable
     {
         _disposed = true;
         await _lifetime.CancelAsync();
-        if (_polling is not null)
-            try { await _polling; } catch (JSDisconnectedException) { } catch (OperationCanceledException) { }
+        PrintAgent.OnStatusChanged -= ConnectionChanged;
+        PrintAgent.OnJobChanged -= JobChanged;
+        Capture.Changed -= ConnectionChanged;
         _lifetime.Dispose();
     }
 }

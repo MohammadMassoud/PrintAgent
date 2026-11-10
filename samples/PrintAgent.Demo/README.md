@@ -1,10 +1,6 @@
 # PrintAgent demo
 
-A standalone Blazor Server application for machine discovery, printer selection, RAW submission and queue results. It references source projects in this repository, so cloning and running does not depend on a published NuGet version.
-
-## Simulated printer
-
-On Windows x64 with the .NET 10 SDK:
+Standalone Blazor Interactive Server example using direct WebSocket printing. Requires Windows x64 and .NET 10 SDK.
 
 ```shell
 git clone https://github.com/MohammadMassoud/PrintAgent.git
@@ -12,73 +8,17 @@ cd PrintAgent
 dotnet run --project samples/PrintAgent.Demo -- --simulate
 ```
 
-Open **http://localhost:5199**. Wait for **Agent connected**, select **Simulated TCP printer**, choose ZPL or ESC/POS, and submit a sample. The page shows jobs and captured bytes. Submit several copies to exercise the queue.
+Open http://localhost:5199. Select **Simulated TCP printer**, choose ZPL or ESC/POS and queue a request. The temporary console agent owns an isolated queue and sends exact bytes to a loopback TCP receiver. No Windows service is installed; physical printers are excluded. Its own origin is preapproved through temporary configuration. Normal installations use the Windows authorization dialog.
 
-This mode starts a temporary console agent and TCP listener. It does not install a service or print physically. Ctrl+C stops the host and its child agent. Captures are kept in memory; queue data and keys are stored under `.demo-data/` in the project directory, which Git ignores.
+The example shows pushed job updates, persistent request keys, retries without duplicate delivery and actionable errors. There is no application-server printing database or API polling. Its loopback-only sample login is not a production authentication design.
 
-The demo retains each request's destination, payload and idempotency keys in browser storage before submission. Retrying or reloading uses the same keys. Use **New request** when you deliberately want another print operation.
+Omit `--simulate` to use an installed agent. Authorize the website through the Windows dialog and refresh before choosing a printer. That mode can print physically.
 
-## Real printer
-
-```shell
-dotnet run --project samples/PrintAgent.Demo
-```
-
-Open the same address. If no compatible service is recognized, click **Download installer**, run the downloaded EXE with administrator approval, then refresh the connection. A browser may ask for local-network access permission.
-
-Select a printer that accepts the chosen RAW format. ZPL requires a ZPL-capable printer; ESC/POS requires an ESC/POS-capable printer. The agent does not validate the language. Submitted jobs may produce physical output.
-
-Windows agent 0.5.0 can serve this demo alongside other integrated applications without replacing their connections. Older agents require an upgrade to support multiple applications. Keep the demo running while testing: its API exists only while the process is active. Simulation remains available without changing the installed service.
-
-## Configuration
-
-| Setting | Default | Purpose |
-| --- | --- | --- |
-| Application URL | `http://localhost:5199` | Browser and API address |
-| `Demo:DataDirectory` | `.demo-data` | Queue, keys and simulation data |
-| `Demo:BridgePort` | `17831`, or `17832` in simulation | Local discovery bridge |
+Error examples, one at a time:
 
 ```shell
-dotnet run --project samples/PrintAgent.Demo -- --simulate --urls http://localhost:5299 --Demo:BridgePort 17833
+dotnet run --project samples/PrintAgent.Demo -- --simulate --Demo:ErrorExample=authorization
+dotnet run --project samples/PrintAgent.Demo -- --simulate --Demo:ErrorExample=unavailable
 ```
 
-Simulation uses a separate bridge port to coexist with an installed service. If a port is occupied, stop the earlier demo or choose another. Use the same URL consistently: `localhost` and `127.0.0.1` are different browser origins.
-
-The application accepts only loopback clients. Its fixed demonstration login is for local testing; production must provide authentication and authorization, HTTPS, durable storage and persistent Data Protection keys.
-
-## Project layout
-
-- `Program.cs`: host, demonstration authentication and integration registration.
-- `Components/Pages/Home.razor` and `Home.razor.cs`: selection, requests and results.
-- `wwwroot/demo.css`: responsive page styles.
-- `DemoSimulator.cs`: temporary agent process and simulated destination.
-
-The page uses `@inject PrintAgent PrintAgent` and the `SinergiaAI.PrintAgent` namespace. Simulation infrastructure uses advanced backend APIs to provision a temporary installation.
-
-## Actionable errors
-
-Connection and backend failures show the package's safe message and an expandable **How to resolve** panel. It contains numbered administrator steps, a stable error code and a reference to the original host log entry. Sign-in failures do not offer the installer as a fix. See the [troubleshooting guide](../../docs/troubleshooting.md).
-
-To demonstrate these states without changing actual permissions, deleting DLLs or starting any agent:
-
-```shell
-dotnet run --project samples/PrintAgent.Demo -- --simulate --Demo:ErrorExample=storage
-dotnet run --project samples/PrintAgent.Demo -- --simulate --Demo:ErrorExample=sqlite
-```
-
-Run one command at a time and open http://localhost:5199. Expand **How to resolve** to see the administrator's steps. `unknown` demonstrates a failure whose cause cannot be identified safely. Configuration failures are not retried automatically; use **Refresh connection** after correcting a real deployment.
-
-## Browser verification
-
-Optional, with Node.js and Playwright:
-
-```shell
-npm install --prefix artifacts/browser-tools playwright
-npx --prefix artifacts/browser-tools playwright install chromium
-node tests/demo.browser.cjs
-node tests/multi_application.browser.cjs
-```
-
-The check submits only to the simulated destination, verifies retries across reloads, and captures desktop and mobile screenshots under `artifacts/`.
-
-The multi-application check starts one unconfigured console agent and two independent hosts. It verifies automatic enrollment, another user in a fresh browser profile, separate credentials, restart persistence, retry safety and printing while the other host is offline. It uses only a simulated TCP destination.
+These demonstrate unapproved origins and absent agents without changing system permissions or deleting dependencies. See [migration](../../docs/migration-1.0.md) before using an old installation.

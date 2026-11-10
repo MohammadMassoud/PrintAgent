@@ -33,15 +33,9 @@ if (!string.IsNullOrWhiteSpace(errorExample) && !simulate)
     throw new InvalidOperationException("Error examples require --simulate.");
 builder.Services.AddSingleton(new DemoMode(simulate, errorExample));
 builder.Services.AddSingleton<DemoCapture>();
-if (!string.IsNullOrWhiteSpace(errorExample))
-    builder.Services.AddSingleton<SinergiaAI.PrintAgent.Server.PrintStore>(_ => throw (errorExample switch
-    {
-        "storage" => new UnauthorizedAccessException("Simulated server storage access failure; no permissions were changed."),
-        "sqlite" => new DllNotFoundException("e_sqlite3 (simulated dependency failure)"),
-        "unknown" => new InvalidOperationException("Simulated unclassified startup failure."),
-        _ => new ArgumentException("Use storage, sqlite or unknown for Demo:ErrorExample.")
-    }));
-else if (simulate) builder.Services.AddHostedService<DemoSimulator>();
+if (errorExample is not null && errorExample is not ("unavailable" or "authorization"))
+    throw new ArgumentException("Use unavailable or authorization for Demo:ErrorExample.");
+if (simulate && errorExample != "unavailable") builder.Services.AddHostedService<DemoSimulator>();
 
 var app = builder.Build();
 // This sample is intentionally restricted to a local development workstation.

@@ -39,15 +39,17 @@ function stop(p) {
         socket.on('end', () => captures.push(Buffer.concat(chunks).toString('utf8')));
     }).listen(0, '127.0.0.1');
     await once(receiver, 'listening');
+    const origins = [`http://127.0.0.1:${await port()}`, `http://127.0.0.1:${await port()}`];
     const startAgent = label => start([path.join(root, `src/SinergiaAI.PrintAgent.Agent/bin/${configuration}/net10.0-windows/win-x64/SinergiaAI.PrintAgent.Agent.dll`)], label, {
         SINERGIAPRINT_Agent__ApiBaseUrl: '', SINERGIAPRINT_Agent__InstallationId: '00000000-0000-0000-0000-000000000000',
+        SINERGIAPRINT_Agent__EnableLegacyApi: 'false', SINERGIAPRINT_Agent__OnlyNetworkPrinters: 'true',
+        SINERGIAPRINT_Agent__AllowedOrigins__0: origins[0], SINERGIAPRINT_Agent__AllowedOrigins__1: origins[1],
         SINERGIAPRINT_Agent__Token: '', SINERGIAPRINT_Agent__DataPath: path.join(work, 'machine'),
         SINERGIAPRINT_Agent__LocalBridgePort: String(bridgePort),
         SINERGIAPRINT_Agent__NetworkPrinters__0__Name: 'Simulated TCP printer',
         SINERGIAPRINT_Agent__NetworkPrinters__0__Address: `tcp://127.0.0.1:${receiver.address().port}`
     });
     agent = startAgent('agent');
-    const origins = [`http://127.0.0.1:${await port()}`, `http://127.0.0.1:${await port()}`];
     for (const [i, origin] of origins.entries()) {
         hosts.push(start(['run', '--project', 'samples/PrintAgent.Demo', '-c', configuration, '--no-build', '--no-launch-profile', '--',
             '--urls', origin, '--Demo:DataDirectory', path.join(work, 'app-' + i), '--Demo:BridgePort', String(bridgePort)], 'app-' + i,
@@ -58,7 +60,7 @@ function stop(p) {
     assert.equal((await fetch(bridge + '/info')).status, 403);
     assert.equal((await fetch(bridge + '/info', { headers: { Origin: 'http://untrusted.example' } })).status, 403);
     assert.equal((await fetch(bridge + '/connect', { method: 'POST', headers: { Origin: 'https://another.example', 'Content-Type': 'application/json' },
-        body: JSON.stringify({ apiBaseUrl: origins[0] + '/printing/', challenge: 'A'.repeat(64) }) })).status, 403);
+        body: JSON.stringify({ apiBaseUrl: origins[0] + '/printing/', challenge: 'A'.repeat(64) }) })).status, 404);
     const info = await (await fetch(bridge + '/info', { headers: { Origin: 'https://another.example' } })).json();
     assert.equal(info.multiApplication, true);
     browser = await chromium.launch({ headless: true, ...(process.env.CHROME_PATH ? { executablePath: process.env.CHROME_PATH } : {}) });
@@ -73,22 +75,14 @@ function stop(p) {
         await page.getByRole('button', { name: 'Queue request', exact: true }).click();
         await wait(() => captures.includes(`^XA^FDApplication ${i}^FS^XZ`));
     }
-    let profiles = JSON.parse(fs.readFileSync(path.join(work, 'machine/applications.json'), 'utf8'));
-    assert.equal(profiles.length, 2);
-    const ids = profiles.map(p => p.installationId).sort();
-    assert.notEqual(profiles[0].token, profiles[1].token);
-    assert.notEqual(profiles[0].dataPath, profiles[1].dataPath);
-    for (const page of pages) {
-        const storage = await page.evaluate(() => JSON.stringify(localStorage));
-        for (const profile of profiles) assert.ok(!storage.includes(profile.token), 'Permanent token must never enter browser storage');
-    }
-    console.log('PASS one initially unconfigured agent automatically serves two independent applications without replacing either connection');
-    console.log('PASS origin validation, separate tokens/journals and exact simulated RAW delivery');
+    assert.equal(fs.existsSync(path.join(work,'machine/applications.json')),false,'No remote application profiles needed');
+    assert.equal(fs.existsSync(path.join(work,'machine/local-queue.db')),true,'Queue persists on workstation');
+    console.log('PASS one local agent serves two approved websites with exact RAW delivery and no backend enrollment');
     const fresh = await browser.newContext(); const freshPage = await fresh.newPage();
     await freshPage.goto(origins[0] + '/demo/sign-in?user=another-demo-user');
     await freshPage.getByRole('status').filter({ hasText: 'Agent connected' }).waitFor({ timeout: 35000 });
-    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(work, 'machine/applications.json'), 'utf8')).map(p => p.installationId).sort(), ids);
-    console.log('PASS another application user in a fresh browser profile recognizes the existing machine connection without enrollment or installer');
+    assert.ok(fs.existsSync(path.join(work,'machine/local-queue.db')));
+    console.log('PASS another application user in a fresh browser profile recognizes the existing machine connection with machine-wide approval and no enrollment or installer');
     stop(agent); await once(agent, 'exit').catch(() => {});
     agent = startAgent('agent-restarted');
     await wait(async () => (await fetch(bridge + '/info', { headers: { Origin: origins[0] } })).ok);
@@ -99,7 +93,7 @@ function stop(p) {
     }
     await new Promise(r => setTimeout(r, 2500));
     assert.equal(captures.length, 2, 'Restart and retry must not print duplicate copies');
-    assert.deepEqual(JSON.parse(fs.readFileSync(path.join(work, 'machine/applications.json'), 'utf8')).map(p => p.installationId).sort(), ids);
+    assert.ok(fs.existsSync(path.join(work,'machine/local-queue.db')));
     await pages[0].getByRole('button', { name: 'New request', exact: true }).click();
     await pages[0].getByLabel('RAW commands').fill('after restart');
     await pages[0].getByRole('button', { name: 'Queue request', exact: true }).click();
@@ -113,7 +107,7 @@ function stop(p) {
     console.log('PASS an unavailable application does not interrupt printing from the other application');
     assert.deepEqual(errors, []);
     await pages[0].screenshot({ path: path.join(work, 'application-a.png'), fullPage: true });
-    console.log('PASS service restart restores both profiles and original idempotency, and accepts new work');
+    console.log('PASS service restart restores the machine queue and original idempotency, and accepts new work');
     console.log('All multi-application checks passed. Artifacts: ' + work);
 })().catch(e => { console.error(e); process.exitCode = 1; }).finally(async () => {
     if (browser) await browser.close();

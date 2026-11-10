@@ -122,10 +122,14 @@ internal static class PrintAgentErrorCatalog
             "On this computer, open Windows Services and check that SinergiaPrint Agent is running. Install the agent only if it is not installed.",
             "Check this site's local-network access permission in the browser. A failed browser request can mean a stopped service, a blocked permission or an unavailable port; it does not prove the agent is missing.",
             "Check that the application's LocalBridgePort matches the agent's port (17831 by default), then refresh the connection." ]),
-        OriginDenied => ("The local service rejected this application's connection.", [
-            "Check browser permission for this site's local-network access.",
-            "Use the application's HTTPS address (HTTP is supported only for loopback development). For automatic enrollment, the remote API must share the application's origin; local development can use different loopback ports.",
-            "Ask the administrator to verify the API URL and agent version, then refresh the connection." ]),
+        LocalStorageUnavailable => ("The Windows agent could not access its local queue.", [
+            "Check free disk space and the PrintAgent Windows service account's access to its ProgramData folder.",
+            "Preserve local-queue.db, WAL files, legacy journals and configuration. Do not delete the queue to resolve a permission issue.",
+            "Ask the workstation administrator to check the Windows Application log. No printing database or folder permission is required on the application server." ]),
+        OriginDenied => ("This website has not been authorized to use the local agent.", [
+            "Click Authorize this website in the application. Windows will open the PrintAgent permission dialog.",
+            "Verify the exact website address shown in that dialog before approving. Authorization is shared by all Windows users and browser profiles on this computer.",
+            "Return to the application and refresh the connection. Browser local-network permission may also be required for each browser profile." ]),
         PortConflict or ProtocolIncompatible or AgentUpdateRequired => (code == PortConflict ? "Another service is responding on the local agent port." : "The installed agent must be updated for this application's integration.", [
             "Compare the installed agent and integration versions shown by the application.",
             "Update using the application's official installer. Preserve the existing configuration and journals.",
@@ -153,7 +157,7 @@ internal static class PrintAgentErrorCatalog
             "Check the printer ID, non-empty RAW content and documented batch and payload limits.",
             "Each document needs its own stable idempotency key. Reuse the original key, bytes and destination only when retrying the same request; do not change keys to work around a submission error." ]),
         OperationTimedOut => ("The printing operation did not complete within its allowed time.", [
-            "Check the application API, browser connection and local service availability, then refresh the connection or query job status.",
+            "Check the browser connection and local service availability, then refresh the connection or query job status.",
             "A timed-out submission may have succeeded. Reuse its original idempotency key, destination and bytes if retrying that same request; inspect the printer before requesting a new copy." ]),
         BackendRequestFailed => ("The application's printing API returned an error.", [
             "Ask the administrator to check the API endpoint, server health and application host log.",

@@ -16,7 +16,9 @@
             @if (!PrintAgent.IsConnected && !_loading) { <p class="detail">@(PrintAgent.LastErrorMessage ?? "Start or install the agent, then refresh the connection.")</p> }
             @if (PrintAgent.UpdateAvailable) { <p class="detail">Agent @PrintAgent.AvailableVersion is available.</p> }
         </div>
-        <div class="actions"><button @onclick="ConnectAsync" disabled="@_busy">Refresh connection</button>
+        <div class="actions">
+            @if(PrintAgent.Status == PrintAgentStatus.OriginDenied && !Mode.Simulated) { <button class="primary" @onclick="AuthorizeAsync">Authorize this website</button> }
+            <button @onclick="ConnectAsync" disabled="@_busy">Refresh connection</button>
             @if(!Mode.Simulated && PrintAgent.LastErrorCode is not (PrintAgentErrorCodes.AuthenticationRequired or PrintAgentErrorCodes.UserIdentifierMissing or PrintAgentErrorCodes.AccessDenied) && (!PrintAgent.IsConnected || PrintAgent.UpdateAvailable)) { <button class="primary" @onclick="InstallAsync" disabled="@_busy">@(PrintAgent.UpdateAvailable ? "Update agent" : "Download installer")</button> }
         </div>
     </section>
@@ -28,7 +30,7 @@
         </details>
     }
     @if (Mode.ErrorExample is not null)
-    { <aside>This mode deliberately reproduces a backend startup failure to demonstrate its message and administrator guidance. No agent is started and no physical printing occurs.</aside> }
+    { <aside>This mode demonstrates a local connection or website authorization error. No physical printing occurs.</aside> }
     else if (Mode.Simulated) { <aside>The temporary agent sends data to a local TCP receiver. No Windows service is installed and no physical printer is used when you select <b>Simulated TCP printer</b>.</aside> }
     @if (_error is not null && (PrintAgent.IsConnected || _error != PrintAgent.LastErrorMessage)) { <p class="notice error" role="alert">@_error</p> }
     @if (_message is not null) { <p class="notice" role="status">@_message</p> }

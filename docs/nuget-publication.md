@@ -1,64 +1,38 @@
 # Release guide
 
-PrintAgent is distributed as the `SinergiaAI.PrintAgent` NuGet package and a separate Windows installer. The integration package version is **0.6.2**; the Windows agent remains **0.5.1**. This release adds actionable errors and administrator guidance in the integration package. It does not require a new Windows service installation.
+Version 1.0.0 requires both a new Windows agent and a new NuGet integration. Build on Windows x64 with .NET 10, Python and Inno Setup 6.
 
-Agent 0.5.0 already supports multi-application enrollment and long polling; 0.5.1 adds branded executables and setup. Version 0.6.2 keeps the existing installer and bootstrap pin. Only rebuild the Windows installer when changing that distribution.
+## Verify
 
-## Build and verify
-
-Use Windows x64, the .NET 10 SDK and Python. Inno Setup 6 is needed to build the installer.
-
-```powershell
+```shell
 dotnet build SinergiaAI.PrintAgent.slnx
 python tests/integration.py
-python tests/long_polling.py
+python tests/websocket_integration.py
 python tests/installer_validation.py
 dotnet run --project tests/ErrorHandling
+node tests/demo.browser.cjs
+node tests/multi_application.browser.cjs
+node tests/errors.browser.cjs
 ```
 
-Checks use isolated data and simulated destinations without permanent service installation or physical printing.
+Browser tests require Playwright and its browser, or `CHROME_PATH` pointing to an installed Chromium executable. They use separate browser processes, isolated data and loopback TCP sinks. No permanent service or physical printer is used. The original integration suite verifies the retained legacy API with explicit worker opt-in.
 
-## Windows installer
+## Build distributions
 
 ```powershell
 .\scripts\publish.ps1 -BuildSetup
-```
-
-The script publishes a self-contained agent, creates `artifacts/SinergiaPrint-Setup.exe`, pins its SHA-256 and immutable URL in the bootstrap source, and rebuilds the server assembly. Existing publish output is archived. Keep private configuration outside public artifacts.
-
-Publish the exact installer at the pinned URL before releasing NuGet. Verify the hosted SHA-256 and retain older immutable installers for existing package versions. Regenerating the installer requires rebuilding and verifying the package so the embedded hash remains correct.
-
-## NuGet package
-
-```powershell
 .\scripts\pack-nuget.ps1
 python tests/package_integration.py
 ```
 
-Output: `artifacts/nuget-unified/SinergiaAI.PrintAgent.0.6.2.nupkg`.
+The Windows distribution includes the self-contained service and desktop approval utility. Its installer registers the `sinergia-printagent` protocol. No API URL, GUID or token is requested. Preserve ProgramData and legacy journals.
 
-The package contains Server, Client and Contracts assemblies, embedded browser discovery and installer bootstrap, English README and MIT license. NuGet restores third-party dependencies. It excludes demo data, credentials and application-specific libraries.
+The publish script archives previous output, creates the installer, and records an immutable hash URL for the retained legacy bootstrap. The direct facade downloads the public generic installer without application context.
 
-Verification restores the actual package into an isolated consumer and checks metadata, public facade, resources, queue and single-use enrollment.
+Outputs: `artifacts/SinergiaPrint-Setup.exe`, `artifacts/SinergiaPrint-Agent-win-x64.zip`, and `artifacts/nuget-unified/SinergiaAI.PrintAgent.1.0.0.nupkg`.
 
-### Visual Studio
+Publish the installer before NuGet and consumer updates. Verify the hosted SHA-256. Retain old immutable URLs for older packages. Wait for NuGet validation and indexing before restoring on deployment servers. A local build is not publication.
 
-Select **Release**, right-click `SinergiaAI.PrintAgent.Server`, and choose **Pack**. Default output is `src/SinergiaAI.PrintAgent.Server/bin/Release/`. This does not build or publish a Windows installer.
+Visual Studio: select Release and choose **Pack** on SinergiaAI.PrintAgent.Server. This builds only the package. The package retains legacy assemblies and SQLite dependencies for explicit old-API maintenance; `AddPrintAgent` does not initialize them.
 
-The package version is in `build/NuGetPackage.props`. Agent and installer versions are maintained separately.
-
-## Publish
-
-1. Sign in to [NuGet upload](https://www.nuget.org/packages/manage/upload) with an owner account.
-2. Select the new package and review ID, version, license, dependencies, repository and README.
-3. Submit and wait for validation and search indexing.
-
-Published versions are immutable. A local build is not publication. A GitHub README edit does not change a published package. Stable `0.6.2` does not require enabling prerelease packages in Visual Studio.
-
-## Upgrade
-
-```shell
-dotnet add package SinergiaAI.PrintAgent --version 0.6.2
-```
-
-Preserve API prefix, data directory, Data Protection keys and connection identifiers. Older agents remain compatible but retain their polling interval until updated. See the [integration guide](integration.md).
+Update the landing page, README and consuming test pages together. Follow [migration](migration-1.0.md); never automatically copy or resend old jobs.

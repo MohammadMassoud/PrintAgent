@@ -1,18 +1,107 @@
 # PrintAgent
 
-[![SinergiaAI](branding/sinergia.png)](https://www.sinergiaai.com/printagent)
+![SinergiaAI](https://raw.githubusercontent.com/MohammadMassoud/PrintAgent/main/branding/sinergia.png)
 
-[Product website](https://www.sinergiaai.com/printagent) · [Documentation](docs/integration.md) · [NuGet](https://www.nuget.org/packages/SinergiaAI.PrintAgent)
+Local RAW printing for Blazor Server and .NET 10. PrintAgent connects the browser directly to a Windows service over WebSocket. Accepted jobs are stored on the workstation and delivered to Windows or TCP printers. Developed by SinergiaAI. MIT licensed.
 
-PrintAgent connects .NET and Blazor Server applications to printers on a Windows computer. Applications submit RAW commands, such as ZPL or ESC/POS, to a persistent queue. A Windows agent receives jobs and sends their bytes through the Windows spooler or a configured TCP connection.
+[Product website](https://www.sinergiaai.com/printagent) · [Integration](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/integration.md) · [Troubleshooting](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/troubleshooting.md)
 
-Developed by SinergiaAI. Licensed under [MIT](LICENSE).
+## Architecture
 
-## Try the demo
+```text
+Blazor component → packaged JavaScript → local WebSocket → durable local queue → printer
+```
 
-The repository includes a standalone Blazor application with a temporary agent and simulated TCP printer. Explore discovery, printer selection, job submission and results without installing a Windows service or using a physical printer.
+The default integration has no printing API, server database, API key, remote enrollment or claim polling. The browser module is embedded in the NuGet package. Applications provide exact ZPL, ESC/POS or other RAW bytes; the agent does not validate printer language or render PDF, Office documents or images.
 
-Requirements: Windows x64, the .NET 10 SDK and Git.
+## Integration
+
+Requires .NET 10, Blazor Server / Interactive Server and Windows x64. Package **1.0.0** uses protocol 2 and requires Windows agent **1.0.0**. Both components must be upgraded from 0.x.
+
+```shell
+dotnet add package SinergiaAI.PrintAgent --version 1.0.0
+```
+
+```csharp
+using SinergiaAI.PrintAgent;
+
+builder.Services.AddPrintAgent();
+
+// After building the app and configuring normal middleware:
+app.MapPrintAgent();
+```
+
+`MapPrintAgent` only serves the browser module. Keep the application's normal authentication and authorization. In an interactive component:
+
+```razor
+@using SinergiaAI.PrintAgent
+@inject PrintAgent PrintAgent
+```
+
+```csharp
+// After the first interactive render:
+await PrintAgent.StartAsync();
+var connected = PrintAgent.IsConnected;
+var names = PrintAgent.Printers;
+var printers = PrintAgent.PrintersInfo; // Id, Name, IsDefault
+
+// Persist the key, destination and bytes before submitting.
+var job = await PrintAgent.SendAsync(printerId, rawBytes, persistedRequestKey);
+var results = await PrintAgent.GetJobsAsync(new[] { job.Id });
+```
+
+`SendBatchAsync` accepts 1–5,000 documents, at most 2 MiB each and 4 MiB of RAW data per batch. Accepted batches are committed atomically. The pending local queue is limited to 256 MiB. Completed jobs retain keys, hashes and results for deduplication while releasing payload storage.
+
+## Workstation setup
+
+1. Install [PrintAgent for Windows](https://www.sinergiaai.com/downloads/SinergiaPrint-Setup.exe). The self-contained service starts with Windows.
+2. For a new website, show an **Authorize this website** button calling `await PrintAgent.AuthorizeAsync()` from its click handler.
+3. Verify the exact website origin in the Windows permission dialog and approve it. Return to the application and refresh the connection.
+4. Select a compatible printer and send a test.
+
+Installation and website approval are shared across Windows users and browser profiles. Browser local-network permission may still be requested separately. Approval applies to the entire origin (scheme, hostname and port), not an application login or a page. Applications sharing an origin share its printing access and job history. Approve trusted websites only.
+
+The service binds to `127.0.0.1:17831`, validates loopback Host and browser Origin, and checks approval on every operation. A separate desktop utility asks for permission and communicates over a local Windows named pipe; websites cannot grant themselves access through WebSocket. Local native processes are part of the workstation trust boundary.
+
+`RevokeAuthorizationAsync()` opens the Windows dialog for removing website access. `UnlinkAsync()` disconnects the current component only. Neither cancels accepted jobs or uninstalls the service. Revocation blocks subsequent operations, including on existing sockets.
+
+## Connection and job updates
+
+Subscribe to `OnStatusChanged`, `OnGetPrinters` and `OnJobChanged`. Dispatch UI changes through `InvokeAsync` and unsubscribe on disposal. Delivery updates are pushed through WebSocket. Query `GetJobsAsync` after reconnection to reconcile missed notifications; use `RefreshPrintersAsync` on demand. DI owns facade disposal.
+
+The browser must be connected to submit new jobs. Accepted jobs continue processing after it closes. Reconnection is explicit; the SDK never automatically resubmits documents.
+
+## Delivery guarantees
+
+- Each stable key belongs to one origin, printer and byte sequence. An identical retry returns the original job; changed content or destination is rejected.
+- Delivery intent is durable before bytes leave the process. Interrupted delivery becomes `Unknown` after restart and is never automatically replayed.
+- `Sent` confirms delivery to the Windows spooler or TCP destination, not physical paper output.
+- Inspect the printer before creating another copy after `Failed`, `Unknown` or a lost submission response. Retain the original key, printer and bytes when retrying the same request.
+
+## Actionable errors
+
+Convenience properties include `LastErrorMessage`, `LastErrorCode`, `LastErrorHelp`, `LastErrorSteps` and `LastErrorReferenceId`. The structured result is `LastError`. Private SDK exceptions remain in the host log; delivery failures are recorded in the Windows service log with the job ID.
+
+```razor
+@if (PrintAgent.LastError is { } error)
+{
+    <p role="alert">@error.Message</p>
+    <details>
+        <summary>How to resolve · @error.Code</summary>
+        <ol>
+            @foreach (var step in error.ResolutionSteps)
+            {
+                <li>@step</li>
+            }
+        </ol>
+        <small>Host log reference: @error.ReferenceId</small>
+    </details>
+}
+```
+
+A printing-folder permission on the application server is not required. `LOCAL_STORAGE_UNAVAILABLE` concerns the workstation's queue. See [troubleshooting](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/troubleshooting.md).
+
+## Demo
 
 ```shell
 git clone https://github.com/MohammadMassoud/PrintAgent.git
@@ -20,117 +109,12 @@ cd PrintAgent
 dotnet run --project samples/PrintAgent.Demo -- --simulate
 ```
 
-Open **http://localhost:5199**, wait for **Agent connected**, select **Simulated TCP printer**, and submit a sample. The page displays job status and captured RAW bytes. Ctrl+C stops the application and its temporary agent. Data is stored in `samples/PrintAgent.Demo/.demo-data/` and excluded from Git.
+Open `http://localhost:5199`. Simulation starts an isolated temporary agent and a loopback TCP receiver; physical printers are excluded and no service is installed. Only the sample origin is preapproved in the temporary configuration. Omit `--simulate` to use an installed agent and the normal Windows authorization dialog. [Demo guide](https://github.com/MohammadMassoud/PrintAgent/tree/main/samples/PrintAgent.Demo).
 
-To test an installed agent and real printer:
+## Upgrade from 0.x
 
-```shell
-dotnet run --project samples/PrintAgent.Demo
-```
+Upgrade both the package and Windows service. Remove printing-specific server data folders and API URL settings from the default integration. Existing option properties remain for source compatibility but are unused by the direct facade. The package retains legacy assemblies and their dependencies for explicit maintenance; default DI does not initialize them.
 
-Open the same address and use **Download installer** if the service is unavailable. Run the downloaded installer, return to the page and refresh the connection. Choose a printer that supports the selected command language. Printing starts only when you submit a request.
+Old queues, credentials and journals are preserved, not imported or automatically resent. Reconcile old work before switching. Use a new browser-storage namespace for direct-mode request records so pages cannot restore old remote batches into the new local queue. Legacy polling requires explicit `Agent:EnableLegacyApi=true` and is disabled by default.
 
-The demo accepts only local clients and uses a demonstration login. Its authentication setup is not a production template. See the [demo guide](samples/PrintAgent.Demo/README.md) for configuration and troubleshooting.
-
-## Add to an application
-
-```shell
-dotnet add package SinergiaAI.PrintAgent --version 0.6.2
-```
-
-Register the integration in an authenticated Blazor Server host that already configures interactive server components and authorization:
-
-```csharp
-using SinergiaAI.PrintAgent;
-
-builder.Services.AddPrintAgent(options =>
-{
-    options.DataDirectory = "App_Data/PrintAgent";
-    options.PublicBaseUrl = "https://your-app.example/printing/";
-});
-
-// After building the app and configuring authentication and authorization:
-app.MapPrintAgent();
-```
-
-In a component:
-
-```razor
-@using SinergiaAI.PrintAgent
-@inject PrintAgent PrintAgent
-```
-
-Call `StartAsync` after the first interactive render:
-
-```csharp
-await PrintAgent.StartAsync();
-
-var connected = PrintAgent.IsConnected;
-var names = PrintAgent.Printers;
-var printers = PrintAgent.PrintersInfo; // Id, Name, IsDefault
-
-// Persist the key, destination and bytes before submitting a request.
-var job = await PrintAgent.SendAsync(printerId, rawBytes, persistedRequestKey);
-var results = await PrintAgent.GetJobsAsync(new[] { job.Id });
-```
-
-The package includes the Server, Client and Contracts assemblies, browser discovery module and contextual installer bootstrap. Standard integration uses the `SinergiaAI.PrintAgent` namespace; pages do not need copied services, interfaces or JavaScript files.
-
-Additional operations include `SendBatchAsync`, `RefreshPrintersAsync`, `DownloadInstallerAsync` and `UnlinkAsync`. The `OnStatusChanged` and `OnGetPrinters` events support UI updates. The facade does not create a polling timer: the application controls connection refresh and pending job queries. See the [integration guide](docs/integration.md) for lifecycle and deployment details.
-
-## Actionable errors
-
-PrintAgent 0.6.2 explains recognized failures and supplies numbered recovery steps. The same API handles server storage/SQLite failures, expired application sessions and local connection problems:
-
-```csharp
-PrintAgent.LastErrorMessage;     // Safe explanation.
-PrintAgent.LastErrorCode;        // Stable code for translations or application behavior.
-PrintAgent.LastErrorHelp;        // Numbered administrator instructions.
-PrintAgent.LastErrorSteps;       // Read-only instruction list for a details panel.
-PrintAgent.LastErrorReferenceId; // Reference to the original exception in the host log.
-```
-
-Display the message and steps in your component; the integration package supplies their content. Technical exceptions and server details remain in the host log. Unknown failures receive a reference and investigation guidance instead of an assumed root cause. See the [administrator troubleshooting guide](docs/troubleshooting.md), including IIS Application Pool permissions and native SQLite deployment. The demo includes simulated error examples. No extra diagnostic endpoint or Windows agent reinstall is required for this package update.
-
-## How it works
-
-1. The browser contacts the local service at `127.0.0.1:17831` to obtain a short-lived machine challenge.
-2. The authenticated backend validates the challenge and recognizes the installation. The service token stays outside the browser.
-3. The application queues jobs in SQLite. The Windows agent maintains an authenticated outbound request to the backend.
-4. A new job wakes the waiting agent. The agent records the operation in its local journal before sending RAW bytes, then reports the result.
-
-Install the service once per computer. Multiple applications, application users and browser profiles can use that installation. Each integrated application enrolls automatically through its authenticated backend and retains its own credentials, queue and durable journal. Adding an application does not replace other connections. Browser permission to access the local service may be required per origin and profile.
-
-The current releases are package **0.6.2** and Windows agent **0.5.1**. Multi-application enrollment is available from package 0.6.0 and agent 0.5.0; older services need one upgrade. Generic installation does not ask for an API URL, GUID or token. The actionable-error update does not require reinstalling an existing compatible service.
-
-Installation downloads a contextual EXE containing a single-use enrollment code. The bootstrap redeems configuration, downloads the pinned installer, verifies SHA-256 and requests elevation. Windows x64 agent binaries include their runtime; the bootstrap requires .NET Framework 4.8. Executables are currently unsigned.
-
-## Queue behavior
-
-Library **0.6.2** and Windows agent **0.5.1** support long polling. An empty claim waits asynchronously for up to 20 seconds, without holding a SQLite connection or transaction. Enqueue and acknowledgement commits notify waiting claims. The agent renews an idle wait immediately and uses exponential backoff with jitter after communication failures.
-
-This reduces idle claim requests from approximately 30 to 3 per minute per agent. Older agents remain compatible but retain their previous polling interval; upgrade both backend and service to enable long polling. Notifications are local to an API process. With several processes sharing storage, another process sees work on its next claim, within the wait interval; immediate cross-process notification requires shared signaling.
-
-`Sent` means bytes reached the configured destination, not that paper output was verified. Preserve idempotency keys across retries. After partial or uncertain failure, inspect the printer before intentionally creating another copy. The durable journal prevents automatic physical resubmission of a job that may already have printed.
-
-The agent does not validate printer command languages or render PDF, Office documents or images. Printers installed only for a Windows user may be unavailable to the service account.
-
-## Build and verification
-
-```shell
-dotnet build SinergiaAI.PrintAgent.slnx
-python tests/integration.py
-python tests/long_polling.py
-python tests/installer_validation.py
-dotnet run --project tests/ErrorHandling
-```
-
-Checks use temporary agents and simulated destinations. They do not install a permanent service or print physically. See the [release guide](docs/nuget-publication.md) for package generation and Visual Studio instructions.
-
-## Documentation
-
-- [Demo application](samples/PrintAgent.Demo/README.md)
-- [Integration and operation](docs/integration.md)
-- [Troubleshooting and administrator steps](docs/troubleshooting.md)
-- [Release guide](docs/nuget-publication.md)
-- [License](LICENSE)
+[Migration checklist](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/migration-1.0.md) · [Release guide](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/nuget-publication.md)

@@ -16,14 +16,14 @@ async function ready(base) { for(let i=0;i<150;i++){try{if((await fetch(base+'he
 (async()=>{
  const browser=await chromium.launch({headless:true,...(process.env.CHROME_PATH?{executablePath:process.env.CHROME_PATH}:{})});
  try{
-  for(const [kind,code,expected] of [['storage','STORAGE_ACCESS_DENIED','access storage'],['sqlite','SQLITE_DEPENDENCY_MISSING','SQLite dependency'],['unknown','BACKEND_INITIALIZATION_FAILED','could not be initialized']]){
+  for(const [kind,code,expected] of [['unavailable','AGENT_UNREACHABLE','could not reach'],['authorization','LOCAL_ORIGIN_DENIED','not been authorized']]){
    const base=`http://127.0.0.1:${await port()}/`, logPath=path.join(work,kind+'.log'), log=fs.openSync(logPath,'w');
-   const host=spawn('dotnet',['run','--project','samples/PrintAgent.Demo','-c',configuration,'--no-build','--no-launch-profile','--','--simulate',`--Demo:ErrorExample=${kind}`,'--urls',base,'--Demo:DataDirectory',path.join(work,kind)],{cwd:root,windowsHide:true,env:{...process.env,ASPNETCORE_ENVIRONMENT:'Development'},stdio:['ignore',log,log]});
+   const host=spawn('dotnet',['run','--project','samples/PrintAgent.Demo','-c',configuration,'--no-build','--no-launch-profile','--','--simulate',`--Demo:ErrorExample=${kind}`,'--urls',base,'--Demo:DataDirectory',path.join(work,kind),'--Demo:BridgePort',String(await port())],{cwd:root,windowsHide:true,env:{...process.env,ASPNETCORE_ENVIRONMENT:'Development'},stdio:['ignore',log,log]});
    const page=await browser.newPage({viewport:{width:1280,height:1000}});
    const errors=[];page.on('pageerror',e=>errors.push(e.message));
    try{
     await ready(base);await page.goto(base);
-    await page.getByRole('status').filter({hasText:'Printing backend unavailable'}).waitFor({timeout:20000});
+    await page.getByRole('status').filter({hasText:'Agent not connected'}).waitFor({timeout:20000});
     assert.match(await page.locator('.connection .detail').innerText(),new RegExp(expected));
     await page.locator('.error-help summary').click();
     assert.match(await page.locator('.error-help').innerText(),new RegExp(code));
@@ -35,11 +35,11 @@ async function ready(base) { for(let i=0;i<150;i++){try{if((await fetch(base+'he
     assert.ok(!(await page.locator('main').innerText()).includes('Simulated unclassified startup failure'),'No raw exception in UI');
     await page.waitForTimeout(3500);
     assert.equal((fs.readFileSync(logPath,'utf8').match(new RegExp('PrintAgent failure '+code,'g'))||[]).length,1,'No automatic retry loop for configuration failures');
-    if(kind==='storage') await page.screenshot({path:path.join(work,'administrator-steps.png'),fullPage:true});
+    if(kind==='authorization') await page.screenshot({path:path.join(work,'administrator-steps.png'),fullPage:true});
     await page.setViewportSize({width:390,height:844});
     assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth),true,'Mobile error guidance must not overflow');
     assert.deepEqual(errors,[]);
-    console.log('PASS',kind,'safe error, numbered steps, correlated reference, no installer/retry loop, responsive panel');
+    console.log('PASS',kind,'safe local error, numbered steps, correlated reference, no retry loop, responsive panel');
    }finally{
     await page.close();if(host.exitCode===null)spawnSync('taskkill',['/PID',String(host.pid),'/T','/F'],{windowsHide:true,stdio:'ignore'});fs.closeSync(log);
    }

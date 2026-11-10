@@ -29,23 +29,11 @@ await using (var scope = app.Services.CreateAsyncScope())
     _ = PrintAgentErrorCodes.DataDirectoryAccessDenied;
     using var module = typeof(PrintAgent).Assembly.GetManifestResourceStream("PrintAgent.Browser.js")
         ?? throw new Exception("The browser bridge must be embedded in the NuGet assembly.");
-    if (!(await new StreamReader(module).ReadToEndAsync()).Contains("export async function discover"))
+    if (!(await new StreamReader(module).ReadToEndAsync()).Contains("new WebSocket"))
         throw new Exception("Invalid embedded browser bridge.");
 }
-var store = app.Services.GetRequiredService<PrintStore>();
-var credentials = store.CreateInstallation("Single-package consumer");
-var enrollment = app.Services.GetRequiredService<PrintEnrollmentService>();
-var installer = enrollment.CreateInstaller(credentials, new Uri("http://localhost:5189/printing/"));
-if (installer[0] != 'M' || installer[1] != 'Z')
-    throw new Exception("Embedded Windows bootstrap is missing.");
-var marker = Encoding.ASCII.GetBytes("SINERGIAPRINT-CONTEXT-V1");
-if (!installer.AsSpan(installer.Length - marker.Length).SequenceEqual(marker))
-    throw new Exception("Installer context marker is missing.");
-var count = BitConverter.ToInt32(installer, installer.Length - marker.Length - 4);
-using var context = JsonDocument.Parse(installer.AsMemory(installer.Length - marker.Length - 4 - count, count));
-var code = context.RootElement.GetProperty("code").GetString()!;
-var configuration = enrollment.Redeem(code) ?? throw new Exception("Enrollment failed.");
-if (configuration.InstallationId != credentials.InstallationId || enrollment.Redeem(code) is not null)
-    throw new Exception("Enrollment must match the installation and be single-use.");
+if (app.Services.GetService<PrintStore>() is not null || app.Services.GetService<PrintEnrollmentService>() is not null)
+    throw new Exception("Direct integration must not register or initialize the legacy backend.");
+if (File.Exists(Path.Combine(data, "printing.db"))) throw new Exception("Direct integration created a server database.");
 _ = app.Services.GetRequiredService<PrintingClient>();
-Console.WriteLine("PASS single NuGet: root PrintAgent facade/models/DI, embedded browser module, Server + Client + Contracts, SQLite, embedded EXE, one-use enrollment and endpoints. No Common dependency.");
+Console.WriteLine("PASS single NuGet: root PrintAgent facade/models/DI, embedded browser module, Server + Client + Contracts, no backend database or enrollment, WebSocket browser module. No Common dependency.");

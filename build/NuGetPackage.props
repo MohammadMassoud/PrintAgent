@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <Version>0.6.2</Version>
+    <Version>1.0.0</Version>
     <Authors>MohammadMassoud</Authors>
     <Company>SinergiaAI</Company>
     <PackageProjectUrl>https://www.sinergiaai.com/printagent</PackageProjectUrl>
@@ -11,7 +11,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>sinergia.png</PackageIcon>
     <PackageTags>printing;printagent;raw;zpl;zebra;escpos;blazor;sinergiaai</PackageTags>
-    <PackageReleaseNotes>Actionable printing errors with stable codes, safe messages, numbered administrator resolution steps and correlated host-log references. Classifies authentication, storage, SQLite dependencies, architecture and local discovery failures. No extra diagnostic endpoint or Windows service update is required.</PackageReleaseNotes>
+    <PackageReleaseNotes>Direct local WebSocket printing with a durable machine-wide queue, origin authorization, FIFO delivery and persistent idempotency. No remote printing API, backend database, token or polling required. Requires Windows agent 1.0.0. Legacy server jobs are not migrated or automatically resent.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
   <ItemGroup>
