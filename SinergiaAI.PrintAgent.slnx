@@ -11,4 +11,7 @@
     <Project Path="src/SinergiaAI.PrintAgent.Contracts/SinergiaAI.PrintAgent.Contracts.csproj" />
     <Project Path="src/SinergiaAI.PrintAgent.Server/SinergiaAI.PrintAgent.Server.csproj" />
   </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/ErrorHandling/ErrorHandling.csproj" />
+  </Folder>
 </Solution>

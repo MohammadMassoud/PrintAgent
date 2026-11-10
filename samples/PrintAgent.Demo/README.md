@@ -55,6 +55,19 @@ The application accepts only loopback clients. Its fixed demonstration login is 
 
 The page uses `@inject PrintAgent PrintAgent` and the `SinergiaAI.PrintAgent` namespace. Simulation infrastructure uses advanced backend APIs to provision a temporary installation.
 
+## Actionable errors
+
+Connection and backend failures show the package's safe message and an expandable **How to resolve** panel. It contains numbered administrator steps, a stable error code and a reference to the original host log entry. Sign-in failures do not offer the installer as a fix. See the [troubleshooting guide](../../docs/troubleshooting.md).
+
+To demonstrate these states without changing actual permissions, deleting DLLs or starting any agent:
+
+```shell
+dotnet run --project samples/PrintAgent.Demo -- --simulate --Demo:ErrorExample=storage
+dotnet run --project samples/PrintAgent.Demo -- --simulate --Demo:ErrorExample=sqlite
+```
+
+Run one command at a time and open http://localhost:5199. Expand **How to resolve** to see the administrator's steps. `unknown` demonstrates a failure whose cause cannot be identified safely. Configuration failures are not retried automatically; use **Refresh connection** after correcting a real deployment.
+
 ## Browser verification
 
 Optional, with Node.js and Playwright:

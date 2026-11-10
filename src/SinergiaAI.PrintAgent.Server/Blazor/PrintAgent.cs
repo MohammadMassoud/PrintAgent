@@ -8,7 +8,7 @@ using Microsoft.Extensions.DependencyInjection;
 namespace SinergiaAI.PrintAgent;
 
 /// <summary>Manages browser discovery, machine proofs, enrollment and Windows agent version checks.</summary>
-public sealed class PrintAgent(
+public sealed partial class PrintAgent(
     IServiceProvider services,
     IJSRuntime js,
     IOptions<PrintAgentOptions> options,
@@ -37,7 +37,6 @@ public sealed class PrintAgent(
     public bool MachineConfirmed => _machineConfirmed;
     public Guid? DeviceId => _connection?.Installation.Id;
     public string? MachineName => _connection?.MachineName;
-    public string? LastErrorMessage { get; private set; }
     public string? InstalledVersion { get; private set; }
     public string AvailableVersion => options.Value.AvailableAgentVersion;
     public bool UpdateAvailable { get; private set; }
@@ -83,18 +82,17 @@ public sealed class PrintAgent(
             {
                 _machineConfirmed = false;
                 Status = PrintAgentStatus.Unavailable;
-                LastErrorMessage = "Recognize this computer again.";
-                throw new InvalidOperationException(LastErrorMessage);
+                throw new PrintAgentOperationException(PrintAgentErrorCodes.MachineRecognitionExpired, "Recognize this computer again.");
             }
             if (_machineConfirmed)
             {
                 Status = RecentContact ? PrintAgentStatus.Connected : PrintAgentStatus.AwaitingApi;
-                LastErrorMessage = null;
+                RecordDiscoveryError(Status, null);
             }
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
-            LastErrorMessage = "Could not query the connection on the server.";
+            RecordError(ex);
             Status = ex is BackendInitializationException ? PrintAgentStatus.ServerUnavailable : PrintAgentStatus.Error;
             throw;
         }
@@ -107,7 +105,7 @@ public sealed class PrintAgent(
         }
     }
 
-    private Guid CurrentDevice() => DeviceId ?? throw new InvalidOperationException("Recognize this computer before using printing.");
+    private Guid CurrentDevice() => DeviceId ?? throw new PrintAgentOperationException(PrintAgentErrorCodes.MachineRecognitionExpired, "Recognize this computer before using printing.");
 
     public async Task<PrintJob> SendAsync(string printerId, byte[] content, string idempotencyKey, CancellationToken ct = default) =>
         (await SendBatchAsync(new[] { new PrintDocument(printerId, content, idempotencyKey) }, ct))[0];
@@ -117,9 +115,12 @@ public sealed class PrintAgent(
         await _gate.WaitAsync(ct);
         try
         {
-            if (!IsConnected) throw new InvalidOperationException("Recognize the connected agent on this computer before printing.");
-            return (await printing.SubmitBatchAsync(CurrentDevice(), documents, ct)).Select(PrintJob.FromContract).ToArray();
+            if (!IsConnected) throw new PrintAgentOperationException(PrintAgentErrorCodes.AgentConfirmationFailed, "Recognize the connected agent on this computer before printing.");
+            var jobs = (await printing.SubmitBatchAsync(CurrentDevice(), documents, ct)).Select(PrintJob.FromContract).ToArray();
+            ClearError();
+            return jobs;
         }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { RecordError(ex); throw; }
         finally { _gate.Release(); }
     }
 
@@ -127,9 +128,10 @@ public sealed class PrintAgent(
     {
         await _gate.WaitAsync(ct);
         try { return (await printing.GetJobsAsync(CurrentDevice(), jobIds, ct)).Select(PrintJob.FromContract).ToArray(); }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { RecordError(ex); throw; }
         finally { _gate.Release(); }
     }
-    private sealed record BrowserDiscoveryResult(string Status, [property: JsonPropertyName("comprovante")] string? Proof, string? Version, string? Error);
+    private sealed record BrowserDiscoveryResult(string Status, [property: JsonPropertyName("comprovante")] string? Proof, string? Version, string? Error, string? ErrorCode = null);
 
     private async Task PrepareBrowserAsync(Uri application, CancellationToken ct)
     {
@@ -151,7 +153,7 @@ public sealed class PrintAgent(
             if (result.Status == "connected" && !string.IsNullOrWhiteSpace(result.Proof))
             {
                 _connection = await printing.RecognizeMachineAsync(result.Proof, ct)
-                    ?? throw new InvalidOperationException("Machine recognition expired. Recognize this computer again.");
+                    ?? throw new PrintAgentOperationException(PrintAgentErrorCodes.MachineRecognitionExpired, "Machine recognition expired. Recognize this computer again.");
                 await js.InvokeVoidAsync("localStorage.setItem", ct, _storageKey, _connection.Proof);
             }
             // Only the original owner may import a legacy link. Migration alone does not prove local presence.
@@ -182,18 +184,16 @@ public sealed class PrintAgent(
             Status = state;
             InstalledVersion = result.Version;
             UpdateAvailable = update;
-            LastErrorMessage = result.Error;
-            return new(state, _connection, result.Version, available, update, result.Error);
+            RecordDiscoveryError(state, result.ErrorCode);
+            return new(state, _connection, result.Version, available, update, LastErrorMessage);
         }
-        catch (Exception ex) when (ex is not OperationCanceledException)
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested)
         {
             _machineConfirmed = false;
-            logger.LogError(ex, "Failed to initialize or recognize the local PrintAgent. Check backend configuration, SQLite dependencies and data directory permissions.");
+            RecordError(ex);
             Status = ex is BackendInitializationException ? PrintAgentStatus.ServerUnavailable : PrintAgentStatus.Error;
             InstalledVersion = null;
             UpdateAvailable = false;
-            LastErrorMessage = ex is BackendInitializationException ? ex.Message
-                : "Could not recognize the agent. Try again and check the host log if the problem persists.";
             throw;
         }
         finally
@@ -221,8 +221,10 @@ public sealed class PrintAgent(
             }
             await _browser!.InvokeVoidAsync("downloadInstaller", ct,
                 printing.GetInstallerUrl(application, _connection.Installation.Id), _connection.Proof);
+            ClearError();
             return _connection;
         }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { RecordError(ex); throw; }
         finally { _gate.Release(); }
     }
 
@@ -236,10 +238,11 @@ public sealed class PrintAgent(
             _connection = null;
             _machineConfirmed = false;
             Status = PrintAgentStatus.Unlinked;
-            LastErrorMessage = null;
+            ClearError();
             InstalledVersion = null;
             UpdateAvailable = false;
         }
+        catch (Exception ex) when (ex is not OperationCanceledException || !ct.IsCancellationRequested) { RecordError(ex); throw; }
         finally
         {
             var previousPrinters = PrintersInfo;

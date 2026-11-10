@@ -1,0 +1,6 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <ItemGroup>
+    <ProjectReference Include="../../src/SinergiaAI.PrintAgent.Server/SinergiaAI.PrintAgent.Server.csproj" />
+    <ProjectReference Include="../../src/SinergiaAI.PrintAgent.Contracts/SinergiaAI.PrintAgent.Contracts.csproj" />
+  </ItemGroup>
+</Project>

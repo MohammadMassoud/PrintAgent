@@ -35,7 +35,7 @@ The demo accepts only local clients and uses a demonstration login. Its authenti
 ## Add to an application
 
 ```shell
-dotnet add package SinergiaAI.PrintAgent --version 0.6.1
+dotnet add package SinergiaAI.PrintAgent --version 0.6.2
 ```
 
 Register the integration in an authenticated Blazor Server host that already configures interactive server components and authorization:
@@ -78,6 +78,20 @@ The package includes the Server, Client and Contracts assemblies, browser discov
 
 Additional operations include `SendBatchAsync`, `RefreshPrintersAsync`, `DownloadInstallerAsync` and `UnlinkAsync`. The `OnStatusChanged` and `OnGetPrinters` events support UI updates. The facade does not create a polling timer: the application controls connection refresh and pending job queries. See the [integration guide](docs/integration.md) for lifecycle and deployment details.
 
+## Actionable errors
+
+PrintAgent 0.6.2 explains recognized failures and supplies numbered recovery steps. The same API handles server storage/SQLite failures, expired application sessions and local connection problems:
+
+```csharp
+PrintAgent.LastErrorMessage;     // Safe explanation.
+PrintAgent.LastErrorCode;        // Stable code for translations or application behavior.
+PrintAgent.LastErrorHelp;        // Numbered administrator instructions.
+PrintAgent.LastErrorSteps;       // Read-only instruction list for a details panel.
+PrintAgent.LastErrorReferenceId; // Reference to the original exception in the host log.
+```
+
+Display the message and steps in your component; the integration package supplies their content. Technical exceptions and server details remain in the host log. Unknown failures receive a reference and investigation guidance instead of an assumed root cause. See the [administrator troubleshooting guide](docs/troubleshooting.md), including IIS Application Pool permissions and native SQLite deployment. The demo includes simulated error examples. No extra diagnostic endpoint or Windows agent reinstall is required for this package update.
+
 ## How it works
 
 1. The browser contacts the local service at `127.0.0.1:17831` to obtain a short-lived machine challenge.
@@ -87,13 +101,13 @@ Additional operations include `SendBatchAsync`, `RefreshPrintersAsync`, `Downloa
 
 Install the service once per computer. Multiple applications, application users and browser profiles can use that installation. Each integrated application enrolls automatically through its authenticated backend and retains its own credentials, queue and durable journal. Adding an application does not replace other connections. Browser permission to access the local service may be required per origin and profile.
 
-Multi-application support requires package **0.6.1** in each application and Windows agent **0.5.1**. Older agents need one upgrade. A generic installation no longer asks for an API URL, GUID or token.
+The current releases are package **0.6.2** and Windows agent **0.5.1**. Multi-application enrollment is available from package 0.6.0 and agent 0.5.0; older services need one upgrade. Generic installation does not ask for an API URL, GUID or token. The actionable-error update does not require reinstalling an existing compatible service.
 
 Installation downloads a contextual EXE containing a single-use enrollment code. The bootstrap redeems configuration, downloads the pinned installer, verifies SHA-256 and requests elevation. Windows x64 agent binaries include their runtime; the bootstrap requires .NET Framework 4.8. Executables are currently unsigned.
 
 ## Queue behavior
 
-Library **0.6.1** and Windows agent **0.5.1** support long polling. An empty claim waits asynchronously for up to 20 seconds, without holding a SQLite connection or transaction. Enqueue and acknowledgement commits notify waiting claims. The agent renews an idle wait immediately and uses exponential backoff with jitter after communication failures.
+Library **0.6.2** and Windows agent **0.5.1** support long polling. An empty claim waits asynchronously for up to 20 seconds, without holding a SQLite connection or transaction. Enqueue and acknowledgement commits notify waiting claims. The agent renews an idle wait immediately and uses exponential backoff with jitter after communication failures.
 
 This reduces idle claim requests from approximately 30 to 3 per minute per agent. Older agents remain compatible but retain their previous polling interval; upgrade both backend and service to enable long polling. Notifications are local to an API process. With several processes sharing storage, another process sees work on its next claim, within the wait interval; immediate cross-process notification requires shared signaling.
 
@@ -108,6 +122,7 @@ dotnet build SinergiaAI.PrintAgent.slnx
 python tests/integration.py
 python tests/long_polling.py
 python tests/installer_validation.py
+dotnet run --project tests/ErrorHandling
 ```
 
 Checks use temporary agents and simulated destinations. They do not install a permanent service or print physically. See the [release guide](docs/nuget-publication.md) for package generation and Visual Studio instructions.
@@ -116,5 +131,6 @@ Checks use temporary agents and simulated destinations. They do not install a pe
 
 - [Demo application](samples/PrintAgent.Demo/README.md)
 - [Integration and operation](docs/integration.md)
+- [Troubleshooting and administrator steps](docs/troubleshooting.md)
 - [Release guide](docs/nuget-publication.md)
 - [License](LICENSE)

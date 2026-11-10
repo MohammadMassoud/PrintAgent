@@ -22,6 +22,11 @@ await using (var scope = app.Services.CreateAsyncScope())
     var agent = scope.ServiceProvider.GetRequiredService<PrintAgent>();
     if (agent.IsConnected || agent.Status != PrintAgentStatus.NotStarted || agent.Printers.Count != 0 || agent.PrintersInfo.Count != 0)
         throw new Exception("The root-namespace facade must start disconnected with empty read-only printer lists.");
+    if (agent.LastError is not null || agent.LastErrorMessage is not null || agent.LastErrorHelp is not null
+        || agent.LastErrorCode is not null || agent.LastErrorReferenceId is not null || agent.LastErrorSteps.Count != 0)
+        throw new Exception("Actionable error fields must be clear before the first operation.");
+    _ = typeof(PrintAgentError);
+    _ = PrintAgentErrorCodes.DataDirectoryAccessDenied;
     using var module = typeof(PrintAgent).Assembly.GetManifestResourceStream("PrintAgent.Browser.js")
         ?? throw new Exception("The browser bridge must be embedded in the NuGet assembly.");
     if (!(await new StreamReader(module).ReadToEndAsync()).Contains("export async function discover"))

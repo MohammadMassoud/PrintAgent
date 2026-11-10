@@ -14,7 +14,7 @@ The download website distributes installers only. The printing API runs in the a
 
 ## Register the integration
 
-Install `SinergiaAI.PrintAgent` version `0.6.0` in the backend and in any component library that uses its public types. Non-Web SDK projects require `<FrameworkReference Include="Microsoft.AspNetCore.App" />`. This integration targets .NET 10 and Blazor Server, including interactive server components in Blazor Web Apps.
+Install `SinergiaAI.PrintAgent` version `0.6.2` in the backend and in any component library that uses its public types. Non-Web SDK projects require `<FrameworkReference Include="Microsoft.AspNetCore.App" />`. This integration targets .NET 10 and Blazor Server, including interactive server components in Blazor Web Apps.
 
 ```csharp
 using SinergiaAI.PrintAgent;
@@ -46,6 +46,12 @@ Call `await PrintAgent.StartAsync(cancellationToken)` after the first interactiv
 Subscribe to `OnStatusChanged` or `OnGetPrinters` with handlers that dispatch UI changes through `InvokeAsync(StateHasChanged)`. Unsubscribe and cancel page operations on disposal. DI owns the facade lifetime. The facade starts no automatic timer. Refresh discovery when appropriate, call `RefreshPrintersAsync` to read the latest backend report, and query pending job IDs until final results arrive. The standalone demo shows this lifecycle.
 
 `InstalledVersion`, `AvailableVersion` and `UpdateAvailable` are compared by the integration after discovery. JavaScript transports local service information; it does not independently determine or install updates. A page can offer `DownloadInstallerAsync` when an upgrade is available.
+
+## Errors and administrator guidance
+
+Use `LastErrorMessage`, `LastErrorCode`, `LastErrorHelp`, `LastErrorSteps` and `LastErrorReferenceId` to display a safe explanation and numbered resolution steps. `LastError` exposes the complete structured result. These fields are populated for recognized integration failures without requiring an extra diagnostic endpoint. A user-requested cancellation does not replace the previous error, and successful discovery clears stale guidance.
+
+Catch operation exceptions in the page, display these fields instead of raw exception details, and provide an expandable help area if appropriate. Use the stable code for custom translations. Server exceptions are logged with the displayed reference. Do not automatically retry a possibly submitted print with new keys. The [administrator guide](troubleshooting.md) includes IIS permissions, SQLite dependencies, recovery instructions and a Razor presentation example.
 
 ## Submit RAW jobs
 

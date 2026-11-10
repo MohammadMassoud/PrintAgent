@@ -9,19 +9,28 @@
 <PageTitle>PrintAgent · Local demo</PageTitle>
 <main>
     <header><div><a class="brand" href="https://www.sinergiaai.com/printagent"><img src="sinergia.svg" width="28" height="28" alt="SinergiaAI" /> PrintAgent</a><span class="tag">LOCAL DEMO</span><h1>Print from this workstation.</h1><p>Connect an agent, choose a printer and send a RAW document.</p></div>
-        <span class="mode">@(Mode.Simulated ? "SIMULATED PRINTER" : "WINDOWS PRINTERS")</span></header>
+        <span class="mode">@(Mode.ErrorExample is not null ? "ERROR EXAMPLE" : Mode.Simulated ? "SIMULATED PRINTER" : "WINDOWS PRINTERS")</span></header>
     <section class="connection">
-        <div><strong class="status @(PrintAgent.IsConnected ? "online" : "offline")" role="status">@(_loading ? "Connecting…" : PrintAgent.IsConnected ? "Agent connected" : PrintAgent.Status == PrintAgentStatus.Unlinked ? "Browser link removed" : "Agent not connected")</strong>
+        <div><strong class="status @(PrintAgent.IsConnected ? "online" : "offline")" role="status">@ConnectionHeading</strong>
             <p>@(PrintAgent.MachineName ?? "Local workstation") @if(PrintAgent.InstalledVersion is {} version){<span> · Agent @version</span>}</p>
             @if (!PrintAgent.IsConnected && !_loading) { <p class="detail">@(PrintAgent.LastErrorMessage ?? "Start or install the agent, then refresh the connection.")</p> }
             @if (PrintAgent.UpdateAvailable) { <p class="detail">Agent @PrintAgent.AvailableVersion is available.</p> }
         </div>
         <div class="actions"><button @onclick="ConnectAsync" disabled="@_busy">Refresh connection</button>
-            @if(!Mode.Simulated && (!PrintAgent.IsConnected || PrintAgent.UpdateAvailable)) { <button class="primary" @onclick="InstallAsync" disabled="@_busy">@(PrintAgent.UpdateAvailable ? "Update agent" : "Download installer")</button> }
+            @if(!Mode.Simulated && PrintAgent.LastErrorCode is not (PrintAgentErrorCodes.AuthenticationRequired or PrintAgentErrorCodes.UserIdentifierMissing or PrintAgentErrorCodes.AccessDenied) && (!PrintAgent.IsConnected || PrintAgent.UpdateAvailable)) { <button class="primary" @onclick="InstallAsync" disabled="@_busy">@(PrintAgent.UpdateAvailable ? "Update agent" : "Download installer")</button> }
         </div>
     </section>
-    @if (Mode.Simulated) { <aside>The temporary agent sends data to a local TCP receiver. No Windows service is installed and no physical printer is used when you select <b>Simulated TCP printer</b>.</aside> }
-    @if (_error is not null) { <p class="notice error" role="alert">@_error</p> }
+    @if (PrintAgent.LastError is { } problem)
+    {
+        <details class="panel error-help"><summary>How to resolve · @problem.Code</summary>
+            <ol>@foreach (var step in problem.ResolutionSteps) { <li>@step</li> }</ol>
+            <p class="hint">Host log reference: <code>@problem.ReferenceId</code></p>
+        </details>
+    }
+    @if (Mode.ErrorExample is not null)
+    { <aside>This mode deliberately reproduces a backend startup failure to demonstrate its message and administrator guidance. No agent is started and no physical printing occurs.</aside> }
+    else if (Mode.Simulated) { <aside>The temporary agent sends data to a local TCP receiver. No Windows service is installed and no physical printer is used when you select <b>Simulated TCP printer</b>.</aside> }
+    @if (_error is not null && (PrintAgent.IsConnected || _error != PrintAgent.LastErrorMessage)) { <p class="notice error" role="alert">@_error</p> }
     @if (_message is not null) { <p class="notice" role="status">@_message</p> }
     <div class="columns">
         <section class="panel"><h2>Document</h2>
@@ -39,7 +48,7 @@
             <p class="hint">Sent confirms delivery to the spooler or TCP destination; it does not confirm physical paper output.</p>
         </section>
     </div>
-    @if(Mode.Simulated){<section class="panel"><div class="section-heading"><h2>Captured documents</h2><span>@Capture.Documents.Count capture(s) · latest 20</span></div>
+    @if(Mode.Simulated && Mode.ErrorExample is null){<section class="panel"><div class="section-heading"><h2>Captured documents</h2><span>@Capture.Documents.Count capture(s) · latest 20</span></div>
         @if(Capture.Documents.Count == 0){<p class="hint">Select Simulated TCP printer and queue a request to inspect its exact payload here.</p>}
         @foreach(var document in Capture.Documents){<details><summary>@document.ReceivedAt.ToLocalTime().ToString("HH:mm:ss") · @document.Length bytes</summary><pre>@document.Content</pre></details>}</section>}
     <footer><span>PrintAgent · SinergiaAI</span><a href="https://github.com/MohammadMassoud/PrintAgent#readme">Documentation</a></footer>

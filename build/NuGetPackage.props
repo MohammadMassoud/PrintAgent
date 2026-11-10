@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <Version>0.6.1</Version>
+    <Version>0.6.2</Version>
     <Authors>MohammadMassoud</Authors>
     <Company>SinergiaAI</Company>
     <PackageProjectUrl>https://www.sinergiaai.com/printagent</PackageProjectUrl>
@@ -11,7 +11,7 @@
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>sinergia.png</PackageIcon>
     <PackageTags>printing;printagent;raw;zpl;zebra;escpos;blazor;sinergiaai</PackageTags>
-    <PackageReleaseNotes>SinergiaAI product branding, package icon and official PrintAgent website. Windows agent 0.5.1 includes branded executables and setup. Multi-application enrollment, durable queues and long polling remain supported.</PackageReleaseNotes>
+    <PackageReleaseNotes>Actionable printing errors with stable codes, safe messages, numbered administrator resolution steps and correlated host-log references. Classifies authentication, storage, SQLite dependencies, architecture and local discovery failures. No extra diagnostic endpoint or Windows service update is required.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
   <ItemGroup>

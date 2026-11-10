@@ -14,6 +14,10 @@ public partial class Home : IAsyncDisposable
     private bool _loading = true, _busy, _refreshing, _disposed;
     private string _format = "ZPL", _content = "^XA\n^CI28\n^FO40,40^A0N,35,35^FDPrintAgent sample^FS\n^FO40,100^BY2^BCN,80,Y,N,N^FD123456789^FS\n^XZ";
     private string? _printerId, _error, _message;
+    private string ConnectionHeading => _loading ? "Connecting…" : PrintAgent.IsConnected ? "Agent connected"
+        : PrintAgent.Status == PrintAgentStatus.ServerUnavailable ? "Printing backend unavailable"
+        : PrintAgent.LastErrorCode == PrintAgentErrorCodes.AuthenticationRequired ? "Sign-in required"
+        : PrintAgent.Status == PrintAgentStatus.Unlinked ? "Browser link removed" : "Agent not connected";
     private int _quantity = 1;
     private Guid? _restoredDevice;
     private RequestPlan? _request;
@@ -61,13 +65,16 @@ public partial class Home : IAsyncDisposable
                 await InvokeAsync(async () =>
                 {
                     if (_busy || _refreshing || _disposed) return;
+                    // Configuration and sign-in failures need user/admin action, not a retry loop.
+                    if (PrintAgent.Status == PrintAgentStatus.ServerUnavailable
+                        || PrintAgent.LastErrorCode is PrintAgentErrorCodes.AuthenticationRequired or PrintAgentErrorCodes.UserIdentifierMissing or PrintAgentErrorCodes.AccessDenied) return;
                     if (!PrintAgent.MachineConfirmed || DateTimeOffset.UtcNow - _lastDiscovery > TimeSpan.FromSeconds(30))
                         await ConnectAsync();
                     else
                     {
                         try { await PrintAgent.RefreshPrintersAsync(_lifetime.Token); await RefreshJobsAsync(); }
                         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested) { }
-                        catch (Exception ex) { _error = ex.Message; }
+                        catch (Exception ex) { _error = PrintAgent.LastErrorMessage ?? ex.Message; }
                     }
                     StateHasChanged();
                 });
@@ -126,7 +133,7 @@ public partial class Home : IAsyncDisposable
             await SaveAsync();
             _message = $"{_jobs.Count} job(s) queued. Retrying this request reuses its original keys.";
         }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { _error = PrintAgent.LastErrorMessage ?? ex.Message; }
         finally { _busy = false; }
     }
 
@@ -148,7 +155,7 @@ public partial class Home : IAsyncDisposable
         if (_busy) return;
         _busy = true; _error = null;
         try { await PrintAgent.DownloadInstallerAsync(_lifetime.Token); _message = "Run the downloaded installer, approve the Windows prompt and refresh the connection."; }
-        catch (Exception ex) { _error = ex.Message; }
+        catch (Exception ex) { _error = PrintAgent.LastErrorMessage ?? ex.Message; }
         finally { _busy = false; }
     }
 

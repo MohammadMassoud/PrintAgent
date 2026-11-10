@@ -11,7 +11,7 @@ Developed by SinergiaAI. MIT licensed. [Source and documentation](https://github
 ## Installation
 
 ```shell
-dotnet add package SinergiaAI.PrintAgent --version 0.6.1
+dotnet add package SinergiaAI.PrintAgent --version 0.6.2
 ```
 
 The package contains the Server, Client and Contracts assemblies, embedded browser discovery and a contextual installer bootstrap. Dependencies are restored by NuGet.
@@ -59,15 +59,40 @@ Additional operations include `SendBatchAsync`, `RefreshPrintersAsync`, `Downloa
 
 The facade does not start a polling timer. The consuming page controls connection refresh and pending job queries. Subscribe to `OnStatusChanged` and `OnGetPrinters` using UI dispatch, unsubscribe on disposal, and cancel page operations. DI owns service disposal.
 
+## Actionable errors and recovery
+
+`LastErrorMessage` explains the failure. `LastErrorCode` supports application-specific translations; `LastErrorHelp` provides numbered administrator instructions, and `LastErrorSteps` exposes them as a read-only list. `LastErrorReferenceId` identifies the original exception in the host log. The complete structured result is available as `LastError`.
+
+The package recognizes storage access, read-only/busy/full/damaged databases, missing SQLite dependencies, architecture issues, sign-in and local discovery failures. Raw exception messages and browser errors are not returned through these fields. Unknown causes receive investigation guidance without an assumed fix. Display these properties in the consuming component; no separate diagnostic endpoint is needed, and the Windows service does not need updating for this feature.
+
+```razor
+@if (PrintAgent.LastError is { } error)
+{
+    <p role="alert">@error.Message</p>
+    <details>
+        <summary>How to resolve</summary>
+        <ol>
+            @foreach (var step in error.ResolutionSteps)
+            {
+                <li>@step</li>
+            }
+        </ol>
+        <small>@error.Code · @error.ReferenceId</small>
+    </details>
+}
+```
+
+[Administrator troubleshooting and UI example](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/troubleshooting.md).
+
 ## Windows agent
 
 Install the service once per Windows computer. Multiple integrated applications, application users and browser profiles can use it. The browser discovers the service through `127.0.0.1:17831`; new applications enroll automatically using a single-use code from their authenticated backend. Each application retains separate credentials, queue and journal without replacing existing connections. The permanent service token does not enter the browser. Local-network permission may be required per origin and browser profile.
 
-Automatic multi-application enrollment requires package **0.6.1** and Windows agent **0.5.1**. Agents 0.3/0.4 need one upgrade. Generic Windows setup no longer asks for an API URL, GUID or token. Remote enrollment targets the application's own HTTPS origin; HTTP loopback is supported for local development.
+The current releases are package **0.6.2** and Windows agent **0.5.1**. Automatic multi-application enrollment is available from package 0.6.0 and agent 0.5.0; agents 0.3/0.4 need one upgrade. Generic Windows setup does not ask for an API URL, GUID or token. Remote enrollment targets the application's own HTTPS origin; HTTP loopback is supported for local development.
 
 The contextual download contains a single-use enrollment code. Running it retrieves configuration, verifies the pinned installer and requests administrative approval. Downloading this NuGet package does not install a Windows service. Windows x64 agent binaries include their runtime; the bootstrap requires .NET Framework 4.8. Executables are currently unsigned.
 
-Package **0.6.1** and agent **0.5.1** enable asynchronous long polling with a 20-second idle wait, reducing idle claim requests from approximately 30 to 3 per minute. Enqueue wakes a waiting claim without holding SQLite connections during the wait. Communication failures use exponential backoff with jitter. Older agents remain compatible but need upgrading to benefit. Notification hints are local to one API process.
+Package **0.6.2** and agent **0.5.1** enable asynchronous long polling with a 20-second idle wait, reducing idle claim requests from approximately 30 to 3 per minute. Enqueue wakes a waiting claim without holding SQLite connections during the wait. Communication failures use exponential backoff with jitter. Older agents remain compatible but need upgrading to benefit. Notification hints are local to one API process.
 
 ## Delivery semantics
 

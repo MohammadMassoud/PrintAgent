@@ -37,7 +37,7 @@ internal sealed class PrintAgentBackend(
             if (!Uri.TryCreate(Options.PublicBaseUrl, UriKind.Absolute, out var endpoint)
                 || endpoint.UserInfo.Length != 0 || endpoint.Query.Length != 0 || endpoint.Fragment.Length != 0
                 || (endpoint.Scheme != "https" && !(endpoint.Scheme == "http" && endpoint.IsLoopback)))
-                throw new InvalidOperationException("Configure the public agent API URL using HTTPS (HTTP is allowed only on loopback).");
+                throw new PrintAgentOperationException(PrintAgentErrorCodes.ApiUrlInvalid, "Configure the public agent API URL using HTTPS (HTTP is allowed only on loopback).");
             return new Uri(endpoint.AbsoluteUri.TrimEnd('/') + "/");
         }
         if (environment.IsDevelopment() && application.IsLoopback)
@@ -58,8 +58,8 @@ internal sealed class PrintAgentBackend(
     {
         var user = (await authentication.GetAuthenticationStateAsync()).User;
         return user.Identity?.IsAuthenticated == true
-            ? user.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new UnauthorizedAccessException("The authenticated user has no identifier.")
-            : throw new UnauthorizedAccessException("Sign in to use printing.");
+            ? user.FindFirstValue(ClaimTypes.NameIdentifier) ?? throw new PrintAgentAuthenticationException(PrintAgentErrorCodes.UserIdentifierMissing, "The authenticated user has no identifier.")
+            : throw new PrintAgentAuthenticationException(PrintAgentErrorCodes.AuthenticationRequired, "Sign in to use printing.");
     }
 
     public async Task<string> GetBrowserStorageKeyAsync()
@@ -76,7 +76,7 @@ internal sealed class PrintAgentBackend(
         GetApiUrl(application).AbsoluteUri,
         "http://127.0.0.1:" + Options.LocalBridgePort);
 
-    public string GetBrowserModuleUrl(Uri application) => new Uri(application, ApiPrefix + "/browser.js?v=6").AbsoluteUri;
+    public string GetBrowserModuleUrl(Uri application) => new Uri(application, ApiPrefix + "/browser.js?v=7").AbsoluteUri;
 
     public InstallerContext CreateApplicationEnrollment(Uri application, ClaimsPrincipal user, CancellationToken ct)
     {
@@ -151,7 +151,7 @@ internal sealed class PrintAgentBackend(
 
     public async Task ForgetConnectionAsync(Guid installationId, CancellationToken ct = default)
     {
-        _ = await GetConnectionAsync(installationId, ct) ?? throw new UnauthorizedAccessException("This computer has not been recognized in this session.");
+        _ = await GetConnectionAsync(installationId, ct) ?? throw new PrintAgentAuthenticationException(PrintAgentErrorCodes.MachineRecognitionExpired, "This computer has not been recognized in this session.");
         discovery.ForgetProof(_machineProof!);
         _machineProof = null;
     }
@@ -162,7 +162,7 @@ internal sealed class PrintAgentBackend(
     /// <summary>Queues documents in input order. Reuse request keys after partial submission to avoid duplicate jobs.</summary>
     public async Task<IReadOnlyList<PrintJobInfo>> SubmitBatchAsync(Guid installationId, IReadOnlyList<PrintDocument> documents, CancellationToken ct = default)
     {
-        var connection = await GetConnectionAsync(installationId, ct) ?? throw new UnauthorizedAccessException("This computer has not been recognized in this session.");
+        var connection = await GetConnectionAsync(installationId, ct) ?? throw new PrintAgentAuthenticationException(PrintAgentErrorCodes.MachineRecognitionExpired, "This computer has not been recognized in this session.");
         if (documents.Count is < 1 or > 5000) throw new ArgumentException("Submit between 1 and 5000 documents per batch.");
         if (documents.Select(x => x.IdempotencyKey).Distinct(StringComparer.Ordinal).Count() != documents.Count)
             throw new ArgumentException("Each document requires a distinct idempotency key.");
@@ -187,7 +187,7 @@ internal sealed class PrintAgentBackend(
 
     public async Task<IReadOnlyList<PrintJobInfo>> GetJobsAsync(Guid installationId, IReadOnlyCollection<Guid> jobIds, CancellationToken ct = default)
     {
-        _ = await GetConnectionAsync(installationId, ct) ?? throw new UnauthorizedAccessException("This computer has not been recognized in this session.");
+        _ = await GetConnectionAsync(installationId, ct) ?? throw new PrintAgentAuthenticationException(PrintAgentErrorCodes.MachineRecognitionExpired, "This computer has not been recognized in this session.");
         if (jobIds.Count > 5000) throw new ArgumentException("Query up to 5000 jobs at a time.");
         var results = new List<PrintJobInfo>();
         foreach (var id in jobIds.Distinct())
