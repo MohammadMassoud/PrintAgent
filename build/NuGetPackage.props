@@ -1,7 +1,7 @@
 <Project>
+  <Import Project="Version.props" />
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <Version>1.1.0</Version>
     <Authors>MohammadMassoud</Authors>
     <Company>SinergiaAI</Company>
     <PackageProjectUrl>https://www.sinergiaai.com/printagent</PackageProjectUrl>

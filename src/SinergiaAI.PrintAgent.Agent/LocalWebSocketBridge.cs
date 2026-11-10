@@ -30,7 +30,7 @@ public sealed class LocalWebSocketBridge(AgentOptions options, LocalPrintQueue q
             await next(context);
         });
         app.UseCors(); app.UseWebSockets(new WebSocketOptions { KeepAliveInterval = TimeSpan.FromSeconds(20), KeepAliveTimeout = TimeSpan.FromSeconds(20) });
-        app.MapGet("/info", () => Results.Ok(new { protocol = 2, version = "1.1.0", product = "SinergiaAI.PrintAgent", transport = "websocket", desktopAuthorization = true, multiApplication = true }));
+        app.MapGet("/info", () => Results.Ok(new { protocol = 2, version = typeof(LocalWebSocketBridge).Assembly.GetName().Version!.ToString(3), product = "SinergiaAI.PrintAgent", transport = "websocket", desktopAuthorization = true, multiApplication = true }));
         app.Map("/ws", async context =>
         {
             if (!context.WebSockets.IsWebSocketRequest) { context.Response.StatusCode = 400; return; }
@@ -104,7 +104,7 @@ public sealed class LocalWebSocketBridge(AgentOptions options, LocalPrintQueue q
                 }
                 object result = method switch
                 {
-                    "hello" or "printers" => new { protocol = 2, version = "1.1.0", machineId = queue.MachineId, machineName = Environment.MachineName, printers = printers.List() },
+                    "hello" or "printers" => new { protocol = 2, version = typeof(LocalWebSocketBridge).Assembly.GetName().Version!.ToString(3), machineId = queue.MachineId, machineName = Environment.MachineName, printers = printers.List() },
                     "enqueue" => queue.Enqueue(origin, root.GetProperty("documents").Deserialize<LocalDocument[]>(Json) ?? [], printers.Destinations()),
                     "jobs" => queue.GetJobs(origin, root.GetProperty("jobIds").Deserialize<Guid[]>(Json) ?? []),
                     "ping" => new { alive = true },

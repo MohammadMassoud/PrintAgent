@@ -10,7 +10,7 @@ internal static class DesktopPipe
         await pipe.ConnectAsync(timeout.Token);
         await using var writer = new StreamWriter(pipe,leaveOpen:true) { AutoFlush = true };
         await writer.WriteLineAsync(JsonSerializer.Serialize(request).AsMemory(),timeout.Token);
-        using var reader = new StreamReader(pipe);
+        using var reader = new StreamReader(pipe,leaveOpen:true);
         return await reader.ReadLineAsync(timeout.Token) ?? throw new IOException("The service closed the connection.");
     }
     internal sealed record Pending(Guid Id,string Origin);

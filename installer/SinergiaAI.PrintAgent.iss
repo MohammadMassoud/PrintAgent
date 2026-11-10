@@ -1,8 +1,11 @@
 ﻿; Machine-wide installer. Application connections are added automatically by the service.
+#ifndef AppVersion
+  #define AppVersion "1.1.0"
+#endif
 [Setup]
 AppId={{1035B4C9-6996-4AC4-9F03-52D3B53DE48F}
 AppName=SinergiaPrint Agent
-AppVersion=1.1.0
+AppVersion={#AppVersion}
 AppPublisher=SinergiaAI
 AppSupportURL=https://www.sinergiaai.com/
 DefaultDirName={autopf}\SinergiaPrint

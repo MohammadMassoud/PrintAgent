@@ -24,7 +24,9 @@ if ($BuildSetup) {
     $compiler = Get-Command ISCC.exe -ErrorAction SilentlyContinue
     $compilerPath = if ($compiler) { $compiler.Source } else { Join-Path $root 'artifacts\tools\InnoSetup6\ISCC.exe' }
     if (-not (Test-Path -LiteralPath $compilerPath)) { throw 'ZIP created. To build Setup.exe, install Inno Setup 6 and add ISCC.exe to PATH.' }
-    & $compilerPath (Join-Path $root 'installer\SinergiaAI.PrintAgent.iss')
+    [xml]$releaseVersionFile = Get-Content -LiteralPath (Join-Path $root 'build\Version.props') -Raw
+    $releaseVersion = $releaseVersionFile.Project.PropertyGroup.Version
+    & $compilerPath ('/DAppVersion=' + $releaseVersion) (Join-Path $root 'installer\SinergiaAI.PrintAgent.iss')
     if ($LASTEXITCODE -ne 0) { throw 'Could not compile Setup.exe.' }
     # The small context installer accepts only the exact public installer built here.
     $installerHash = (Get-FileHash -LiteralPath (Join-Path $root 'artifacts\SinergiaPrint-Setup.exe') -Algorithm SHA256).Hash

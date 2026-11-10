@@ -140,3 +140,12 @@ The installer creates a **SinergiaAI PrintAgent** Start menu shortcut and starts
 Closing the window hides it to the tray. **Exit tray app** removes only the icon. **Stop service and exit** stops printing and closes the tray app, preserving pending work. Interrupted delivery remains Unknown and is not automatically resent. Website permissions can be removed in **Authorized websites**.
 
 Desktop menus and permission windows follow the current Windows user's display language: English for English Windows; Portuguese otherwise. Public SDK identifiers, comments and error contracts remain English. The tray's local named-pipe checks do not poll any application API. StartAsync requests a native decision but never authorizes a website itself.
+
+
+## Windows desktop correction (1.1.0)
+
+The refreshed Windows installer retains version 1.1.0, matching NuGet 1.1.0. It fixes local control response disposal, restores authorized-website queries and displays the actual Windows service state. Start and Stop controls are disabled for inappropriate or changing states. The version appears beside the product name.
+
+Download and run the current setup again to apply this desktop correction. No application deployment or NuGet update is required. Existing local queue and configuration are preserved. Do not republish the existing NuGet 1.1.0 package.
+
+The SDK, Windows service and desktop application share the release version in `build/Version.props`. The publishing script also passes this version to the installer compiler.
