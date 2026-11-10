@@ -10,7 +10,7 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>sinergia.png</PackageIcon>
-    <PackageTags>printing;printagent;raw;zpl;zebra;escpos;blazor;sinergiaai</PackageTags>
+    <PackageTags>printing;printagent;blazor;blazor-server;dotnet;csharp;label-printing;thermal-printer;receipt;barcode;raw;zpl;zebra;escpos;websocket;windows;tcp;sinergiaai</PackageTags>
     <PackageReleaseNotes>Direct local WebSocket printing with a durable machine-wide queue, origin authorization, FIFO delivery and persistent idempotency. No remote printing API, backend database, token or polling required. Requires Windows agent 1.0.0. Legacy server jobs are not migrated or automatically resent.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>

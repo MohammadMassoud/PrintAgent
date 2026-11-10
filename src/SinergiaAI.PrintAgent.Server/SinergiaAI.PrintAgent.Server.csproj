@@ -3,8 +3,8 @@
   <PropertyGroup>
     <IsPackable>true</IsPackable>
     <PackageId>SinergiaAI.PrintAgent</PackageId>
-    <Title>PrintAgent</Title>
-    <Description>Windows RAW printing for Blazor Server and .NET 10 applications. Connects the browser directly to a Windows WebSocket agent with a durable local queue and website authorization. Send ZPL, ESC/POS and RAW commands through one Windows agent shared by multiple applications.</Description>
+    <Title>PrintAgent by SinergiaAI - Blazor ZPL and ESC/POS printing</Title>
+    <Description>Print ZPL labels, barcodes and ESC/POS receipts from Blazor Server and .NET 10 applications to local Windows and network TCP printers. Open-source RAW printing agent by SinergiaAI with a browser-to-agent WebSocket connection, durable local queue, website authorization and idempotent request keys. The application generates printer-ready bytes; no PDF, HTML or image conversion.</Description>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludePrintAgentLibraries</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
   <ItemGroup>
