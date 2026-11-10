@@ -113,7 +113,7 @@ Open `http://localhost:5199`. Simulation starts an isolated temporary agent and 
 
 ## Upgrade from 0.x
 
-Upgrade both the package and Windows service. Remove printing-specific server data folders and API URL settings from the default integration. Existing option properties remain for source compatibility but are unused by the direct facade. The package retains legacy assemblies and their dependencies for explicit maintenance; default DI does not initialize them.
+Upgrade both the package and Windows service. Remove printing-specific server data-folder and API URL settings from the integration configuration. Preserve the old data files for reconciliation. Existing option properties remain for source compatibility but are unused by the direct facade. The package retains legacy assemblies and their dependencies for explicit maintenance; default DI does not initialize them.
 
 Old queues, credentials and journals are preserved, not imported or automatically resent. Reconcile old work before switching. Use a new browser-storage namespace for direct-mode request records so pages cannot restore old remote batches into the new local queue. Legacy polling requires explicit `Agent:EnableLegacyApi=true` and is disabled by default.
 
