@@ -33,6 +33,36 @@ Require(bridge.LastBytes.SequenceEqual(binary), "Binary path never encodes or su
 var prepared = agent.CreateTextDocument("test", "one\r\ntwo", "mixed-text", Encoding.Unicode);
 var jobs = await agent.SendBatchAsync([prepared, new PrintDocument("test", binary, "mixed-bytes")]);
 Require(jobs.Count == 2 && bridge.Payloads[0].SequenceEqual(Encoding.Unicode.GetBytes("one\r\ntwo")) && bridge.Payloads[1].SequenceEqual(binary), "Mixed batch preserves each document's encoding and binary content");
+settings.TextEncoding = Encoding.UTF8;
+var automatic1 = await agent.SendAsync("test", "repeat");
+var automatic2 = await agent.SendAsync("test", "repeat");
+Require(automatic1.Id != automatic2.Id, "Omitting a key creates a new request for every call, including identical content");
+var automaticDocument = new PrintDocument("test", "reusable");
+var retainedKey = automaticDocument.IdempotencyKey;
+var saved1 = await agent.SendAsync(new[] { automaticDocument });
+var saved2 = await agent.SendAsync(new[] { automaticDocument });
+Require(!string.IsNullOrWhiteSpace(retainedKey) && automaticDocument.IdempotencyKey == retainedKey && saved1[0].Id == saved2[0].Id, "A prepared document retains its generated key when reused");
+var restoredDocument = JsonSerializer.Deserialize<PrintDocument>(JsonSerializer.Serialize(automaticDocument))!;
+var restoredJobs = await agent.SendAsync(new[] { restoredDocument });
+Require(restoredDocument.IdempotencyKey == retainedKey && restoredDocument.Content.SequenceEqual(automaticDocument.Content) && restoredJobs[0].Id == saved1[0].Id, "Persisted documents restore the same bytes and generated identity instead of creating a duplicate");
+var textList = new[] { "ação", "line\r\nnext\0" };
+var textJobs = await agent.SendAsync("test", textList);
+Require(textJobs.Count == 2 && bridge.Payloads[0].SequenceEqual(Encoding.UTF8.GetBytes(textList[0])) && bridge.Payloads[1].SequenceEqual(Encoding.UTF8.GetBytes(textList[1])), "Text-list SendAsync encodes each document in order");
+var repeatedTextJobs = await agent.SendAsync("test", textList);
+Require(textJobs.Zip(repeatedTextJobs).All(pair => pair.First.Id != pair.Second.Id), "Repeating a plain list creates new requests rather than suppressing intentional copies");
+await agent.SendAsync("test", new byte[][] { binary, new byte[] { 0xff, 0x80, 0 } });
+Require(bridge.Payloads[0].SequenceEqual(binary) && bridge.Payloads[1].SequenceEqual(new byte[] { 0xff, 0x80, 0 }), "Binary-list SendAsync preserves raw bytes");
+await agent.SendAsync(new PrintDocument[] { new("test", "mixed"), new("test", binary) });
+Require(bridge.Payloads[0].SequenceEqual(Encoding.UTF8.GetBytes("mixed")) && bridge.Payloads[1].SequenceEqual(binary), "Document constructors accept text or bytes with optional generated keys");
+before = bridge.Submissions;
+settings.TextEncoding = Encoding.ASCII;
+try { await agent.SendAsync("test", new[] { "valid", "ação" }); throw new Exception("Expected list encoding failure"); }
+catch (EncoderFallbackException) { }
+try { await agent.SendAsync("test", new[] { new string('a', 2 * 1024 * 1024), new string('b', 2 * 1024 * 1024), "c" }); throw new Exception("Expected list size rejection"); }
+catch (ArgumentException) { }
+try { await agent.SendAsync("test", Array.Empty<string>()); throw new Exception("Expected empty list rejection"); }
+catch (ArgumentException) { }
+Require(bridge.Submissions == before, "Invalid text lists fail atomically before transport");
 before = bridge.Submissions;
 try { PrintDocument.FromText("test", "\ud800", "invalid-surrogate", Encoding.UTF8); throw new Exception("Expected invalid Unicode rejection"); }
 catch (EncoderFallbackException) { }

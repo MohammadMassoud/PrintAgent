@@ -31,6 +31,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         throw new Exception("The packaged facade must prepare UTF-8 text without a BOM.");
     Func<string, string, string, CancellationToken, Task<PrintJob>> textSend = agent.SendAsync;
     Func<string, byte[], string, CancellationToken, Task<PrintJob>> byteSend = agent.SendByteAsync;
+    Func<string, byte[], string?, CancellationToken, Task<PrintJob>> unifiedByteSend = agent.SendAsync;
+    Func<string, IReadOnlyList<string>, CancellationToken, Task<IReadOnlyList<PrintJob>>> listSend = agent.SendAsync;
+    Func<IReadOnlyList<PrintDocument>, CancellationToken, Task<IReadOnlyList<PrintJob>>> documentSend = agent.SendAsync;
+    if (new PrintDocument("test", "commands").IdempotencyKey.Length == 0)
+        throw new Exception("Documents must retain generated identities when the caller omits a key.");
+    _ = unifiedByteSend; _ = listSend; _ = documentSend;
     _ = textSend; _ = byteSend;
     _ = PrintAgentErrorCodes.DataDirectoryAccessDenied;
     using var module = typeof(PrintAgent).Assembly.GetManifestResourceStream("PrintAgent.Browser.js")

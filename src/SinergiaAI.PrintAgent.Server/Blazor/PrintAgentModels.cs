@@ -36,28 +36,44 @@ public sealed record PrintPrinter(string Id, string Name, bool IsDefault);
 /// <summary>A printer-ready document for an atomic batch. Text and binary documents use the same RAW delivery pipeline.</summary>
 /// <param name="PrinterId">The destination identifier from PrintPrinter.Id.</param>
 /// <param name="Content">The exact bytes to deliver, with a maximum size of 2 MiB. Do not mutate them during submission.</param>
-/// <param name="IdempotencyKey">A persisted request key, unique within the website origin, identifying this destination and byte sequence.</param>
-public sealed record PrintDocument(string PrinterId, byte[] Content, string IdempotencyKey)
+/// <param name="IdempotencyKey">An optional stable request key. When omitted, a key is generated once for this document.</param>
+[method: System.Text.Json.Serialization.JsonConstructor]
+public sealed record PrintDocument(string PrinterId, byte[] Content, string? IdempotencyKey = null)
 {
+    /// <summary>Gets the explicit or generated request key. Reusing this document preserves its identity.</summary>
+    public string IdempotencyKey { get; init; } = IdempotencyKey ?? Guid.NewGuid().ToString("N");
+
+    /// <summary>Creates a document from strict UTF-8 text commands, without adding a BOM.</summary>
+    /// <param name="PrinterId">The destination identifier reported by the agent.</param>
+    /// <param name="Content">Printer-compatible text commands.</param>
+    /// <param name="IdempotencyKey">An optional stable key; omission generates a new document identity.</param>
+    public PrintDocument(string PrinterId, string Content, string? IdempotencyKey = null)
+        : this(PrinterId, EncodeText(Content, Encoding.UTF8), IdempotencyKey) { }
+
     /// <summary>Encodes printer commands once, without a BOM or implicit command substitutions.</summary>
     /// <param name="printerId">The destination identifier reported by the agent.</param>
     /// <param name="content">Printer-compatible commands. Literal text such as 0x1B is not interpreted as a byte escape.</param>
-    /// <param name="idempotencyKey">The stable key to persist with the resulting bytes before submission.</param>
+    /// <param name="idempotencyKey">An optional stable key. Null generates an identity once for the returned document.</param>
     /// <param name="encoding">The encoding understood by the printer. Unsupported characters are rejected.</param>
-    /// <returns>A document that can be combined with binary documents in SendBatchAsync.</returns>
+    /// <returns>A document that can be combined with binary documents in SendAsync.</returns>
     /// <exception cref="ArgumentException">An identifier, key, content or encoded size is invalid.</exception>
     /// <exception cref="EncoderFallbackException">The encoding cannot represent the supplied text.</exception>
-    public static PrintDocument FromText(string printerId, string content, string idempotencyKey, Encoding encoding)
+    public static PrintDocument FromText(string printerId, string content, string? idempotencyKey, Encoding encoding)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(printerId);
+        if (idempotencyKey is not null) ArgumentException.ThrowIfNullOrWhiteSpace(idempotencyKey);
+        if (idempotencyKey?.Length > 200) throw new ArgumentException("Request keys may contain at most 200 characters.", nameof(idempotencyKey));
+        return new(printerId, EncodeText(content, encoding), idempotencyKey);
+    }
+
+    private static byte[] EncodeText(string content, Encoding encoding)
+    {
         ArgumentException.ThrowIfNullOrEmpty(content);
-        ArgumentException.ThrowIfNullOrWhiteSpace(idempotencyKey);
         ArgumentNullException.ThrowIfNull(encoding);
-        if (idempotencyKey.Length > 200) throw new ArgumentException("Request keys may contain at most 200 characters.", nameof(idempotencyKey));
         var strict = (Encoding)encoding.Clone();
         strict.EncoderFallback = EncoderFallback.ExceptionFallback;
         if (strict.GetByteCount(content) > 2 * 1024 * 1024) throw new ArgumentException("A document may contain at most 2 MiB of encoded bytes.", nameof(content));
-        return new(printerId, strict.GetBytes(content), idempotencyKey);
+        return strict.GetBytes(content);
     }
 }
 

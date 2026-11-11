@@ -2,7 +2,7 @@
 
 ![SinergiaAI](https://raw.githubusercontent.com/MohammadMassoud/PrintAgent/main/branding/sinergia.png)
 
-Connect Blazor Server and .NET 10 applications to local Windows queues, shared network printers and TCP destinations. PrintAgent is RAW printing middleware for compatible label, receipt and ordinary-paper printers. PrintAgent connects the browser directly to a Windows service over WebSocket, with a durable local print queue, delivery status and stable request keys. Developed by SinergiaAI. Free and open source under the MIT license.
+Connect Blazor Server and .NET 10 applications to local Windows queues, shared network printers and TCP destinations. PrintAgent is RAW printing middleware for compatible label, receipt and ordinary-paper printers. PrintAgent connects the browser directly to a Windows service over WebSocket, with a durable local print queue, delivery status and optional application-supplied request keys. Developed by SinergiaAI. Free and open source under the MIT license.
 
 [Product website](https://www.sinergiaai.com/printagent) · [Integration](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/integration.md) · [Troubleshooting](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/troubleshooting.md)
 
@@ -26,10 +26,10 @@ The default integration has no printing API, server database, API key, remote en
 
 ## Integration
 
-Requires .NET 10, Blazor Server / Interactive Server and Windows x64. Package **2.0.0** uses protocol 2 and requires Windows agent **2.0.0**. Both components must be upgraded from 0.x.
+Requires .NET 10, Blazor Server / Interactive Server and Windows x64. Package **2.1.0** uses protocol 2 and works with Windows agent **2.0.0**. Both components must be upgraded from 0.x.
 
 ```shell
-dotnet add package SinergiaAI.PrintAgent --version 2.0.0
+dotnet add package SinergiaAI.PrintAgent --version 2.1.0
 ```
 
 ```csharp
@@ -55,34 +55,38 @@ var connected = PrintAgent.IsConnected;
 var names = PrintAgent.Printers;
 var printers = PrintAgent.PrintersInfo; // Id, Name, IsDefault
 
-// Persist the key, destination and bytes before submitting.
-var textJob = await PrintAgent.SendAsync(printerId, commands, textRequestKey);
-var byteJob = await PrintAgent.SendByteAsync(printerId, rawBytes, byteRequestKey);
+// Simple sends: each call creates a new request when no key is supplied.
+var textJob = await PrintAgent.SendAsync(printerId, commands);
+var byteJob = await PrintAgent.SendAsync(printerId, rawBytes);
+var listJobs = await PrintAgent.SendAsync(printerId, commandList);
 var results = await PrintAgent.GetJobsAsync(new[] { textJob.Id, byteJob.Id });
 ```
 
-`SendAsync` converts text with the configured encoding (strict UTF-8 by default). `SendByteAsync` forwards exact bytes. Both use the same RAW queue and stable request keys. No BOM, line endings or printer-language conversion is added. The device must support the commands and encoding.
+`SendAsync` accepts a string, a byte array, a list of strings, a list of byte arrays or prepared `PrintDocument` instances. C# chooses the overload from the argument type. Text uses the configured encoding (strict UTF-8 by default); bytes are forwarded unchanged. No BOM, line endings or printer-language conversion is added.
+
+Request keys are optional. Without an explicit key, each single or plain-list call creates new jobs, including repeated identical content. For recoverable submission, prepare documents and persist their destination, bytes and generated or explicit keys before sending:
 
 ```csharp
-using System.Text;
+var documents = new[]
+{
+    PrintAgent.CreateTextDocument(printerId, commands), // Uses configured encoding.
+    new PrintDocument(printerId, rawBytes, savedBinaryKey),
+    new PrintDocument(otherPrinterId, otherCommands)   // Strict UTF-8 text.
+};
+// Persist documents before submitting if recovery is required.
+var jobs = await PrintAgent.SendAsync(documents);
 
-builder.Services.AddPrintAgent(o => o.TextEncoding = Encoding.ASCII);
-// Override the default for a printer that understands UTF-8:
-await PrintAgent.SendAsync(printerId, zpl, savedKey, Encoding.UTF8);
-
-var text = PrintAgent.CreateTextDocument(printerId, zpl, textKey, Encoding.UTF8);
-var binary = new PrintDocument(printerId, rawBytes, binaryKey);
-// Persist both documents before submitting the mixed batch.
-await PrintAgent.SendBatchAsync(new[] { text, binary });
+// Explicit stable key for an individual text request:
+await PrintAgent.SendAsync(printerId, commands, idempotencyKey: savedTextKey);
 ```
 
-An encoding mismatch is rejected before transport when characters cannot be represented. Register `CodePagesEncodingProvider.Instance` before using legacy encodings such as `Encoding.GetEncoding(1252)`. UTF-8 is not universal printer support.
+A prepared document generates its key once and keeps it when reused. A key is not a password or a cancellation token. Never automatically repeat a keyless call after an uncertain response; it could create another copy. Cancelling a wait cannot retract accepted work.
 
-A request key identifies one website-origin, destination and byte sequence; it is not an API secret or a cancellation token. Cancelling submission waiting cannot retract a job already accepted by the agent.
+Configure `AddPrintAgent(o => o.TextEncoding = Encoding.ASCII)` (import `System.Text`) or use an explicit encoding: `SendAsync(printerId, commands, null, Encoding.UTF8)`. Unsupported characters are rejected before submission. Register `CodePagesEncodingProvider.Instance` before selecting legacy code pages. The printer must support the supplied commands and encoding.
 
-**Upgrading from 1.x:** change byte-array calls from `SendAsync` to `SendByteAsync`, retaining the exact content and keys. See the [2.0 migration guide](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/migration-2.0.md). English XML API documentation is bundled for IntelliSense and F12 metadata navigation.
+Lists accept 1–5,000 documents, at most 2 MiB each and 4 MiB total after encoding. Acceptance is atomic. The durable pending queue is limited to 256 MiB; completed payloads are released while identities and results are retained.
 
-`SendBatchAsync` accepts 1–5,000 documents, at most 2 MiB each and 4 MiB of RAW data per batch. Accepted batches are committed atomically. The pending local queue is limited to 256 MiB. Completed jobs retain keys, hashes and results for deduplication while releasing payload storage.
+SDK **2.1.0** works with Windows agent **2.0.0**, protocol 2. `SendByteAsync` and `SendBatchAsync` remain compatible aliases, hidden from IntelliSense. See the [2.1 guide](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/migration-2.1.md). English XML API documentation is bundled for IntelliSense and F12 metadata navigation.
 
 ## Workstation setup
 

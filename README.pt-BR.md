@@ -15,7 +15,7 @@ O projeto é independente, gratuito e de código aberto com licença MIT. Pode s
 5. Acompanhe o resultado pela integração.
 
 ```shell
-dotnet add package SinergiaAI.PrintAgent --version 2.0.0
+dotnet add package SinergiaAI.PrintAgent --version 2.1.0
 ```
 
 No `Program.cs`:
@@ -62,25 +62,23 @@ Abra `http://localhost:5199`. A demonstração usa um agente temporário e um re
 
 A versão 1.0.0 usa protocolo 2 e exige atualizar o pacote e o agente. Os diários e dados antigos devem ser preservados para conferência, sem reenvio automático. Consulte o [guia de migração](docs/migration-1.0.md).
 
-## Envio de texto e bytes na versão 2.0
+## Uma API para texto, bytes e listas na versão 2.1
 
 ```csharp
-// Texto: UTF-8 por padrão, configurável na integração ou por envio.
-await PrintAgent.SendAsync(printerId, commands, textRequestKey);
+await PrintAgent.SendAsync(printerId, texto);
+await PrintAgent.SendAsync(printerId, bytes);
+await PrintAgent.SendAsync(printerId, listaDeTextos);
 
-// Binário: os bytes seguem sem conversão.
-await PrintAgent.SendByteAsync(printerId, rawBytes, byteRequestKey);
-
-// Lote com texto preparado e bytes. Persista os documentos antes de enviar.
-var text = PrintAgent.CreateTextDocument(printerId, commands, textKey);
-var binary = new PrintDocument(printerId, rawBytes, binaryKey);
-await PrintAgent.SendBatchAsync(new[] { text, binary });
+var documentos = new[]
+{
+    new PrintDocument(printerId, texto),
+    new PrintDocument(printerId, bytes, chaveSalva)
+};
+await PrintAgent.SendAsync(documentos);
 ```
 
-Configure a codificação padrão com `AddPrintAgent(o => o.TextEncoding = Encoding.ASCII)` ou informe uma por envio: `SendAsync(printerId, commands, requestKey, Encoding.UTF8)`. Importe `System.Text`. A impressora precisa compreender a codificação escolhida. Caracteres incompatíveis são rejeitados; não há conversão de linguagem, adição de BOM ou interpretação de textos como `0x1B` como escapes.
+A chave é opcional: sem uma chave informada, cada chamada simples ou com lista de textos/bytes cria novos trabalhos. Um documento preparado gera sua chave uma vez e a mantém quando reutilizado. Se precisar recuperar o envio após uma falha, persista o destino, os bytes e a chave antes de enviar. Nunca repita automaticamente uma chamada sem chave estável depois de uma resposta incerta.
 
-A chave identifica uma solicitação, não é senha nem `CancellationToken`. Guarde o destino, os bytes exatos e a chave antes do primeiro envio. Cancelar a espera não cancela um trabalho já aceito.
+Textos usam a codificação configurada, UTF-8 estrito por padrão. Bytes seguem sem conversão. Para codificação por documento, use `CreateTextDocument(printerId, texto, encoding: Encoding.ASCII)` e importe `System.Text`. O aplicativo e a impressora precisam concordar sobre a linguagem e a codificação. Não há conversão de PDF, HTML ou imagens.
 
-Impressoras de papel comum também podem ser usadas com linguagens compatíveis, como PCL ou PostScript nos modelos que as suportam. O agente não renderiza PDF, HTML ou imagens. O serviço padrão também inclui impressoras compartilhadas dos usuários com sessão ativa; ele não varre a rede em busca de equipamentos.
-
-Ao atualizar de 1.x, troque chamadas com bytes de `SendAsync` por `SendByteAsync`. Consulte a [migração para 2.0](docs/migration-2.0.md). A documentação XML da API é publicada em inglês para IntelliSense e navegação por metadados no F12.
+O SDK 2.1.0 funciona com o agente Windows 2.0.0. Os métodos antigos continuam compatíveis. Veja o [guia da versão 2.1](docs/migration-2.1.md). A documentação XML da API continua em inglês.

@@ -7,7 +7,7 @@ using System.ComponentModel;
 namespace SinergiaAI.PrintAgent;
 
 /// <summary>Bridges a Blazor Server application to Windows queues and TCP printers through the user's browser.</summary>
-/// <remarks>SendAsync encodes text commands; SendByteAsync preserves binary content. Both use the same durable local RAW queue.</remarks>
+/// <remarks>SendAsync accepts text, bytes or lists. All overloads use the same durable local RAW queue.</remarks>
 /// <param name="services">The application service provider supplied by dependency injection.</param>
 /// <param name="js">The interactive component's JavaScript runtime.</param>
 /// <param name="options">Bridge, installer and text-encoding configuration.</param>
@@ -103,7 +103,7 @@ public sealed partial class PrintAgent(IServiceProvider services, IJSRuntime js,
     /// <param name="ct">Cancels submission waiting; accepted jobs may continue printing.</param>
     /// <returns>Accepted or previously accepted jobs, in the supplied document order.</returns>
     /// <remarks>Persist each document's destination, exact bytes and key before sending. A timeout does not prove rejection; reuse the original keys and bytes.</remarks>
-    public async Task<IReadOnlyList<PrintJob>> SendBatchAsync(IReadOnlyList<PrintDocument> documents,CancellationToken ct = default)
+    public async Task<IReadOnlyList<PrintJob>> SendAsync(IReadOnlyList<PrintDocument> documents,CancellationToken ct = default)
     {
         await _gate.WaitAsync(ct);
         try

@@ -7,7 +7,7 @@
     <NoWarn>$(NoWarn);CS1591</NoWarn>
     <PackageId>SinergiaAI.PrintAgent</PackageId>
     <Title>PrintAgent by SinergiaAI - RAW printing bridge for Blazor and .NET</Title>
-    <Description>Open-source RAW printing middleware for Blazor Server and .NET 10. Send text commands with SendAsync or exact bytes with SendByteAsync to Windows queues, shared network printers and TCP destinations. Supports label, receipt and ordinary-paper printers that accept the supplied language, including ZPL, ESC/POS, PCL and PostScript. Browser-to-agent WebSocket bridge, durable local queue and idempotent request keys. No PDF, HTML or image rendering.</Description>
+    <Description>Open-source RAW printing middleware for Blazor Server and .NET 10. One SendAsync API accepts text, bytes or lists, with optional caller-supplied idempotency keys. Print to Windows queues, shared network printers and TCP destinations. Supports label, receipt and ordinary-paper printers that accept the supplied language, including ZPL, ESC/POS, PCL and PostScript. Durable local queue and no automatic replay of uncertain delivery. No PDF, HTML or image rendering.</Description>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludePrintAgentLibraries</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
   <ItemGroup>

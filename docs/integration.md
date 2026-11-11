@@ -1,28 +1,28 @@
 # Integration and operation
 
-PrintAgent 2.0.0 uses WebSocket protocol 2 between the browser and Windows workstation. The default host integration has no printing API, backend key, server database or claim polling.
+PrintAgent SDK 2.1.0 uses WebSocket protocol 2 between the browser and Windows workstation. The default host integration has no printing API, backend key, server database or claim polling.
 
 ## Blazor Server
 
-Install NuGet 2.0.0. Call `builder.Services.AddPrintAgent()` and `app.MapPrintAgent()` with normal host middleware and authentication. Inject `PrintAgent` from `using SinergiaAI.PrintAgent;` in an Interactive Server component. Call `StartAsync` after the first interactive render.
+Install NuGet 2.1.0. Call `builder.Services.AddPrintAgent()` and `app.MapPrintAgent()` with normal host middleware and authentication. Inject `PrintAgent` from `using SinergiaAI.PrintAgent;` in an Interactive Server component. Call `StartAsync` after the first interactive render.
 
 StartAsync requests approval through the running Windows tray application. The user verifies the exact origin in its native window and allows or denies it. The waiting connection completes automatically after approval; no custom page button or custom-protocol browser launch is needed. If the tray app is closed, open SinergiaAI PrintAgent from Start and refresh. Declined requests have a cooldown of up to two minutes. Permission is shared by Windows users on the machine. Sites on the same origin share access and job history.
 
-Use `IsConnected`, `Printers` or `PrintersInfo`. Persist each request's printer, exact bytes and unique key before `SendAsync`, `SendByteAsync` or `SendBatchAsync`. Never replace a key to bypass a submission conflict. Query known jobs with `GetJobsAsync`.
+Use `IsConnected`, `Printers` or `PrintersInfo`. For recoverable submissions, prepare documents and persist each request's printer, exact bytes and explicit or generated key before `SendAsync`. Never replace a key to bypass a submission conflict. Query known jobs with `GetJobsAsync`.
 
 Subscribe to `OnJobChanged` for pushed status updates. Dispatch UI changes with `InvokeAsync` and unsubscribe on disposal. Notifications are best effort; query persisted results after reconnecting. `OnStatusChanged` reports a closed socket. `OnGetPrinters` reports refreshed lists; call `RefreshPrintersAsync` on demand. DI owns facade disposal. New documents are never automatically resubmitted.
 
 The [README](../README.md) includes setup and error-display examples. The [demo](../samples/PrintAgent.Demo) demonstrates request persistence and event subscriptions.
 
-## Text and binary printing
+## Unified sending
 
-`SendAsync(printerId, content, idempotencyKey, ct)` accepts text and uses `PrintAgentOptions.TextEncoding` (strict UTF-8 by default). An overload accepts an explicit `Encoding` before `ct`. `SendByteAsync(printerId, content, idempotencyKey, ct)` sends an exact byte array. Text conversion rejects unrepresentable characters, adds no BOM and does not interpret literal hexadecimal escape strings. The device must accept the supplied language and encoding.
+Use `SendAsync` for a string, a byte array, a list of strings, a list of byte arrays or an `IReadOnlyList<PrintDocument>`. A string/byte array creates one job; a list creates one job per element. Text is encoded using `TextEncoding` (strict UTF-8 by default); binary content is unchanged. The device must understand the supplied commands and encoding. The agent does not detect the language or render documents.
 
-Use `CreateTextDocument(printerId, content, idempotencyKey, encoding)` to prepare bytes without contacting the agent. Save its content, printer ID and key before calling `SendByteAsync` or combining it with binary `PrintDocument` instances in `SendBatchAsync`. Limits apply after encoding. `PrintDocument.FromText` is also available with an explicit encoding for callers that do not use the facade's configured default.
+Caller-supplied keys are optional. Omission creates a new request for every simple send and every plain-list element. `new PrintDocument(printerId, textOrBytes)` and `CreateTextDocument` instead retain the generated key on the prepared document. Persist its destination, bytes and key before sending if recovery after a lost response matters. Keep explicit keys for existing requests. Repeating a keyless call is a new print request, not a safe retry.
 
-This bridge supports compatible ordinary-paper printers as well as label and receipt printers. PCL, PostScript, ZPL and ESC/POS are examples of device languages, not languages validated or converted by the agent. PDF, HTML, Office and image rendering are outside the transport.
+Use `CreateTextDocument(printerId, commands, encoding: Encoding.ASCII)` for per-document encoding, or `SendAsync(printerId, commands, null, Encoding.ASCII)` for an individual send. Empty explicit keys are invalid. No BOM, implicit escape substitutions or language conversions are added. Lists have the same atomic acceptance and encoded-byte limits as the previous batch API.
 
-See [migration to 2.0](migration-2.0.md) for the renamed binary method and stable-key rules.
+`SendByteAsync` and `SendBatchAsync` remain compatibility aliases. See [migration to 2.1](migration-2.1.md). Compatible ordinary-paper printers are supported with device commands such as PCL or PostScript, just as label and receipt printers use their supported languages. PDF, HTML, Office and image rendering remain outside this RAW transport.
 
 ## Optional settings
 

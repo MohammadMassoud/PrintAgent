@@ -116,7 +116,7 @@ public partial class Home : IAsyncDisposable
             // Single text sends demonstrate SendAsync; stored bytes remain authoritative for reconciliation.
             _jobs = documents.Length == 1
                 ? [await PrintAgent.SendAsync(documents[0].PrinterId, new UTF8Encoding(false, true).GetString(documents[0].Content), documents[0].IdempotencyKey, Encoding.UTF8, _lifetime.Token)]
-                : (await PrintAgent.SendBatchAsync(documents, _lifetime.Token)).ToList();
+                : (await PrintAgent.SendAsync(documents, _lifetime.Token)).ToList();
             _request = _request with { Jobs = _jobs.Select(j => j.Id).ToList() };
             await SaveAsync();
             await RefreshJobsAsync();

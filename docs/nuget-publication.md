@@ -1,6 +1,6 @@
 # Release guide
 
-Version 2.0.0 includes both a new Windows agent and a new NuGet integration. Build on Windows x64 with .NET 10, Python and Inno Setup 6.
+SDK 2.1.0 is a NuGet-only update compatible with the published Windows agent 2.0.0. Build and validate the package; leave the existing installer and its pinned hash unchanged. The full-distribution steps below also cover releases that change the Windows agent. Build on Windows x64 with .NET 10 and Python; Inno Setup is needed only for a new Windows installer.
 
 ## Verify
 
@@ -29,7 +29,7 @@ The Windows distribution includes the self-contained service and desktop approva
 
 The publish script archives previous output, creates the installer, and records an immutable hash URL for the retained legacy bootstrap. The direct facade downloads the public generic installer without application context.
 
-Outputs: `artifacts/SinergiaPrint-Setup.exe`, `artifacts/SinergiaPrint-Agent-win-x64.zip`, and `artifacts/nuget-unified/SinergiaAI.PrintAgent.2.0.0.nupkg`.
+Outputs: `artifacts/SinergiaPrint-Setup.exe`, `artifacts/SinergiaPrint-Agent-win-x64.zip`, and `artifacts/nuget-unified/SinergiaAI.PrintAgent.2.1.0.nupkg`.
 
 Publish the installer before NuGet and consumer updates. Verify the hosted SHA-256. Retain old immutable URLs for older packages. Wait for NuGet validation and indexing before restoring on deployment servers. A local build is not publication.
 
@@ -58,3 +58,7 @@ The SDK, Windows service and desktop application share the release version in `b
 ## Version 2.0
 
 Run `dotnet run --project tests/Sending -c Release` to verify strict encoding, mixed batches and exact binary delivery through the facade. Package verification checks the bundled XML documentation and compiles both sending signatures in an isolated NuGet consumer. See [migration](migration-2.0.md).
+
+## SDK 2.1.0
+
+This SDK-only release unifies SendAsync overloads and makes caller-supplied keys optional. Windows agent 2.0.0 remains compatible; do not rebuild or replace its pinned installer merely to publish this package. Build and test the NuGet, verify optional/generated identities and mixed lists, publish 2.1.0, then activate the updated landing-page examples.
