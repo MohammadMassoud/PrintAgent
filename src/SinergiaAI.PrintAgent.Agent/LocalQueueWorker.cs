@@ -1,13 +1,13 @@
-using System.Drawing.Printing;
 namespace SinergiaAI.PrintAgent.Agent;
 
 public sealed class LocalPrinters(AgentOptions options)
 {
     public IReadOnlyDictionary<string,string> Destinations()
+        => Destinations(options.OnlyNetworkPrinters ? [] : WindowsPrinterDiscovery.List());
+    private IReadOnlyDictionary<string,string> Destinations(IReadOnlyList<WindowsPrinterDiscovery.Printer> installed)
     {
         var items = new Dictionary<string,string>(StringComparer.Ordinal);
-        if (!options.OnlyNetworkPrinters)
-            foreach (var name in PrinterSettings.InstalledPrinters.Cast<string>().Distinct(StringComparer.OrdinalIgnoreCase)) items["windows:" + name] = name;
+        foreach (var printer in installed) items["windows:" + printer.Name] = printer.Name;
         foreach (var p in options.NetworkPrinters)
         {
             if (!Uri.TryCreate(p.Address, UriKind.Absolute, out var u) || u.Scheme != "tcp" || u.Port is < 1 or > 65535) throw new InvalidOperationException("Invalid configured TCP printer.");
@@ -17,8 +17,9 @@ public sealed class LocalPrinters(AgentOptions options)
     }
     public object[] List()
     {
-        var defaultName = options.OnlyNetworkPrinters ? "" : new PrinterSettings().PrinterName;
-        return Destinations().Select(p => (object)new { id = p.Key, name = p.Key.StartsWith("windows:") ? p.Value : options.NetworkPrinters.First(n => n.Address == p.Value).Name, isDefault = p.Value == defaultName }).ToArray();
+        var installed = options.OnlyNetworkPrinters ? [] : WindowsPrinterDiscovery.List();
+        var defaultName = installed.FirstOrDefault(p => p.IsDefault)?.Name;
+        return Destinations(installed).Select(p => (object)new { id = p.Key, name = p.Key.StartsWith("windows:") ? p.Value : options.NetworkPrinters.First(n => n.Address == p.Value).Name, isDefault = string.Equals(p.Value, defaultName, StringComparison.OrdinalIgnoreCase) }).ToArray();
     }
 }
 

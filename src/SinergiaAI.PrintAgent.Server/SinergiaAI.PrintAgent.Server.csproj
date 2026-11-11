@@ -2,9 +2,12 @@
   <Import Project="../../build/NuGetPackage.props" />
   <PropertyGroup>
     <IsPackable>true</IsPackable>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <!-- Legacy backend APIs remain available; the current SinergiaAI.PrintAgent facade is fully documented. -->
+    <NoWarn>$(NoWarn);CS1591</NoWarn>
     <PackageId>SinergiaAI.PrintAgent</PackageId>
-    <Title>PrintAgent by SinergiaAI - Blazor ZPL and ESC/POS printing</Title>
-    <Description>Print ZPL labels, barcodes and ESC/POS receipts from Blazor Server and .NET 10 applications to local Windows and network TCP printers. Open-source RAW printing agent by SinergiaAI with a browser-to-agent WebSocket connection, durable local queue, website authorization and idempotent request keys. The application generates printer-ready bytes; no PDF, HTML or image conversion.</Description>
+    <Title>PrintAgent by SinergiaAI - RAW printing bridge for Blazor and .NET</Title>
+    <Description>Open-source RAW printing middleware for Blazor Server and .NET 10. Send text commands with SendAsync or exact bytes with SendByteAsync to Windows queues, shared network printers and TCP destinations. Supports label, receipt and ordinary-paper printers that accept the supplied language, including ZPL, ESC/POS, PCL and PostScript. Browser-to-agent WebSocket bridge, durable local queue and idempotent request keys. No PDF, HTML or image rendering.</Description>
     <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);IncludePrintAgentLibraries</TargetsForTfmSpecificBuildOutput>
   </PropertyGroup>
   <ItemGroup>

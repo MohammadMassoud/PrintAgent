@@ -1,6 +1,6 @@
 # Release guide
 
-Version 1.1.0 requires both a new Windows agent and a new NuGet integration. Build on Windows x64 with .NET 10, Python and Inno Setup 6.
+Version 2.0.0 includes both a new Windows agent and a new NuGet integration. Build on Windows x64 with .NET 10, Python and Inno Setup 6.
 
 ## Verify
 
@@ -29,7 +29,7 @@ The Windows distribution includes the self-contained service and desktop approva
 
 The publish script archives previous output, creates the installer, and records an immutable hash URL for the retained legacy bootstrap. The direct facade downloads the public generic installer without application context.
 
-Outputs: `artifacts/SinergiaPrint-Setup.exe`, `artifacts/SinergiaPrint-Agent-win-x64.zip`, and `artifacts/nuget-unified/SinergiaAI.PrintAgent.1.1.0.nupkg`.
+Outputs: `artifacts/SinergiaPrint-Setup.exe`, `artifacts/SinergiaPrint-Agent-win-x64.zip`, and `artifacts/nuget-unified/SinergiaAI.PrintAgent.2.0.0.nupkg`.
 
 Publish the installer before NuGet and consumer updates. Verify the hosted SHA-256. Retain old immutable URLs for older packages. Wait for NuGet validation and indexing before restoring on deployment servers. A local build is not publication.
 
@@ -54,3 +54,7 @@ The refreshed Windows installer retains version 1.1.0, matching NuGet 1.1.0. It 
 Download and run the current setup again to apply this desktop correction. No application deployment or NuGet update is required. Existing local queue and configuration are preserved. Do not republish the existing NuGet 1.1.0 package.
 
 The SDK, Windows service and desktop application share the release version in `build/Version.props`. The publishing script also passes this version to the installer compiler.
+
+## Version 2.0
+
+Run `dotnet run --project tests/Sending -c Release` to verify strict encoding, mixed batches and exact binary delivery through the facade. Package verification checks the bundled XML documentation and compiles both sending signatures in an isolated NuGet consumer. See [migration](migration-2.0.md).

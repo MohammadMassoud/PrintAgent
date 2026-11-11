@@ -34,6 +34,12 @@ This refers to the **Windows workstation**, not the application server.
 4. Inspect Windows Event Viewer → Windows Logs → Application for service failures. Delivery errors include a job ID. SDK error references identify the corresponding entry in the application's host log.
 5. Ask the workstation administrator to repair access or restore the appropriate backup, then restart the service during maintenance and reconnect.
 
+## Installed network printer missing
+
+The standard LocalSystem agent includes shared printer connections from active Windows user sessions, as well as machine-installed queues. A connection such as `\\server\Labels` is not the same as a machine-wide TCP/IP installation. Keep its Windows session active until delivery starts and refresh the application's printer list after installing or reconnecting a queue. Agents running under a custom account only discover printers visible to that account. Discovery does not scan the network or infer IP addresses from port names.
+
+For a read-only local diagnostic, run `dotnet run --project tests/PrinterDiscovery/PrinterDiscovery.csproj` from the repository. It reports the executing Windows identity and installed queues, and verifies delivery-context selection without opening a printer for writing or sending bytes. Running it under the signed-in user verifies that user's queues; it does not validate LocalSystem session-token acquisition. Building the project does not replace an already installed Windows service.
+
 ## REQUEST_INVALID
 
 Check that the printer is available, content is non-empty and batch limits are respected. A key identifies exactly one origin, printer and byte sequence. An identical retry returns the old job. Do not generate a fresh key merely to bypass a conflict; that creates another copy.

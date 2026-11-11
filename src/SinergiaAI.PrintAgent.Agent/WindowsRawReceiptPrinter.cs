@@ -21,7 +21,7 @@ public sealed class WindowsRawReceiptPrinter
         {
             if (TryParseTcpEndpoint(printerName, out var host, out var port))
                 await PrintTcpAsync(host, port, payload, ct);
-            else RawPrinterHelper.SendBytesToPrinter(printerName, payload);
+            else WindowsPrinterDiscovery.WithPrinterIdentity(printerName, () => RawPrinterHelper.SendBytesToPrinter(printerName, payload));
         }
         finally { gate.Release(); }
     }

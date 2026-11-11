@@ -1,4 +1,3 @@
-using System.Drawing.Printing;
 using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
@@ -83,10 +82,9 @@ public sealed class AgentWorker(AgentOptions options, IHttpClientFactory clients
     private async Task ReportAsync(HttpClient http, CancellationToken ct)
     {
         var printers = new List<PrinterInfo>(); var destinations = new Dictionary<string, string>();
-        var defaultName = new PrinterSettings().PrinterName;
-        foreach (var name in PrinterSettings.InstalledPrinters.Cast<string>().Distinct(StringComparer.OrdinalIgnoreCase))
+        foreach (var installed in options.OnlyNetworkPrinters ? Array.Empty<WindowsPrinterDiscovery.Printer>() : WindowsPrinterDiscovery.List())
         {
-            var id = "windows:" + name; printers.Add(new(id, name, string.Equals(name, defaultName, StringComparison.OrdinalIgnoreCase))); destinations[id] = name;
+            var id = "windows:" + installed.Name; printers.Add(new(id, installed.Name, installed.IsDefault)); destinations[id] = installed.Name;
         }
         foreach (var network in options.NetworkPrinters)
         {

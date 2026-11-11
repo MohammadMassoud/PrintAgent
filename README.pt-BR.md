@@ -1,6 +1,6 @@
-# PrintAgent by SinergiaAI — impressão de etiquetas no Blazor
+# PrintAgent by SinergiaAI — ponte de impressão RAW para Blazor e .NET
 
-O **SinergiaAI.PrintAgent** permite imprimir etiquetas ZPL, códigos de barras e recibos ESC/POS a partir de aplicativos Blazor Server e .NET 10. Um agente no computador Windows recebe os bytes pelo navegador e os encaminha para uma impressora Windows ou um destino TCP configurado.
+O **SinergiaAI.PrintAgent** é uma ponte de impressão RAW entre aplicativos Blazor Server / .NET 10 e impressoras Windows ou TCP. Atende impressoras de etiquetas, térmicas e de papel comum que aceitem os comandos enviados pelo aplicativo. Um agente no computador Windows recebe os bytes pelo navegador e os encaminha para uma impressora Windows ou um destino TCP configurado.
 
 O projeto é independente, gratuito e de código aberto com licença MIT. Pode ser utilizado em diferentes aplicativos que precisem de impressão local.
 
@@ -15,7 +15,7 @@ O projeto é independente, gratuito e de código aberto com licença MIT. Pode s
 5. Acompanhe o resultado pela integração.
 
 ```shell
-dotnet add package SinergiaAI.PrintAgent --version 1.0.0
+dotnet add package SinergiaAI.PrintAgent --version 2.0.0
 ```
 
 No `Program.cs`:
@@ -61,3 +61,26 @@ Abra `http://localhost:5199`. A demonstração usa um agente temporário e um re
 ## Atualização da linha 0.x
 
 A versão 1.0.0 usa protocolo 2 e exige atualizar o pacote e o agente. Os diários e dados antigos devem ser preservados para conferência, sem reenvio automático. Consulte o [guia de migração](docs/migration-1.0.md).
+
+## Envio de texto e bytes na versão 2.0
+
+```csharp
+// Texto: UTF-8 por padrão, configurável na integração ou por envio.
+await PrintAgent.SendAsync(printerId, commands, textRequestKey);
+
+// Binário: os bytes seguem sem conversão.
+await PrintAgent.SendByteAsync(printerId, rawBytes, byteRequestKey);
+
+// Lote com texto preparado e bytes. Persista os documentos antes de enviar.
+var text = PrintAgent.CreateTextDocument(printerId, commands, textKey);
+var binary = new PrintDocument(printerId, rawBytes, binaryKey);
+await PrintAgent.SendBatchAsync(new[] { text, binary });
+```
+
+Configure a codificação padrão com `AddPrintAgent(o => o.TextEncoding = Encoding.ASCII)` ou informe uma por envio: `SendAsync(printerId, commands, requestKey, Encoding.UTF8)`. Importe `System.Text`. A impressora precisa compreender a codificação escolhida. Caracteres incompatíveis são rejeitados; não há conversão de linguagem, adição de BOM ou interpretação de textos como `0x1B` como escapes.
+
+A chave identifica uma solicitação, não é senha nem `CancellationToken`. Guarde o destino, os bytes exatos e a chave antes do primeiro envio. Cancelar a espera não cancela um trabalho já aceito.
+
+Impressoras de papel comum também podem ser usadas com linguagens compatíveis, como PCL ou PostScript nos modelos que as suportam. O agente não renderiza PDF, HTML ou imagens. O serviço padrão também inclui impressoras compartilhadas dos usuários com sessão ativa; ele não varre a rede em busca de equipamentos.
+
+Ao atualizar de 1.x, troque chamadas com bytes de `SendAsync` por `SendByteAsync`. Consulte a [migração para 2.0](docs/migration-2.0.md). A documentação XML da API é publicada em inglês para IntelliSense e navegação por metadados no F12.

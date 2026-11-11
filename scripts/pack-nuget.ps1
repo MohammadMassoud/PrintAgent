@@ -10,7 +10,7 @@ $packageOutput = Join-Path $projectRoot 'artifacts\nuget-unified'
     --configuration Release --output $packageOutput --nologo
 if ($LASTEXITCODE -ne 0) { throw 'NuGet packaging failed.' }
 
-[xml]$packageProperties = Get-Content (Join-Path $projectRoot 'build\NuGetPackage.props')
+[xml]$packageProperties = Get-Content (Join-Path $projectRoot 'build\Version.props')
 $packageVersion = $packageProperties.Project.PropertyGroup.Version
 $packageFile = Join-Path $packageOutput "SinergiaAI.PrintAgent.$packageVersion.nupkg"
 if (-not (Test-Path -LiteralPath $packageFile)) { throw "Package not found: $packageFile" }

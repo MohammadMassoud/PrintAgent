@@ -26,6 +26,12 @@ await using (var scope = app.Services.CreateAsyncScope())
         || agent.LastErrorCode is not null || agent.LastErrorReferenceId is not null || agent.LastErrorSteps.Count != 0)
         throw new Exception("Actionable error fields must be clear before the first operation.");
     _ = typeof(PrintAgentError);
+    var textDocument = agent.CreateTextDocument("test", "^XA^FDHello^FS^XZ", "saved-key");
+    if (!textDocument.Content.SequenceEqual(Encoding.UTF8.GetBytes("^XA^FDHello^FS^XZ")))
+        throw new Exception("The packaged facade must prepare UTF-8 text without a BOM.");
+    Func<string, string, string, CancellationToken, Task<PrintJob>> textSend = agent.SendAsync;
+    Func<string, byte[], string, CancellationToken, Task<PrintJob>> byteSend = agent.SendByteAsync;
+    _ = textSend; _ = byteSend;
     _ = PrintAgentErrorCodes.DataDirectoryAccessDenied;
     using var module = typeof(PrintAgent).Assembly.GetManifestResourceStream("PrintAgent.Browser.js")
         ?? throw new Exception("The browser bridge must be embedded in the NuGet assembly.");

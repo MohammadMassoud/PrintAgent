@@ -4,11 +4,17 @@ namespace SinergiaAI.PrintAgent;
 
 public sealed partial class PrintAgent
 {
+    /// <summary>Gets safe details of the most recent integration failure, or null after a successful operation.</summary>
     public PrintAgentError? LastError { get; private set; }
+    /// <summary>Gets the most recent safe error message.</summary>
     public string? LastErrorMessage => LastError?.Message;
+    /// <summary>Gets additional recovery context for the most recent error.</summary>
     public string? LastErrorHelp => LastError?.Help;
+    /// <summary>Gets the stable error code for application-specific handling or translation.</summary>
     public string? LastErrorCode => LastError?.Code;
+    /// <summary>Gets the reference identifier associated with the technical host log.</summary>
     public string? LastErrorReferenceId => LastError?.ReferenceId;
+    /// <summary>Gets ordered recovery instructions, or an empty list when no error is recorded.</summary>
     public IReadOnlyList<string> LastErrorSteps => LastError?.ResolutionSteps ?? Array.Empty<string>();
 
     private void ClearError() => LastError = null;

@@ -106,14 +106,17 @@ public partial class Home : IAsyncDisposable
             {
                 if (_quantity is < 1 or > 100 || string.IsNullOrWhiteSpace(_printerId) || string.IsNullOrWhiteSpace(_content))
                     throw new InvalidOperationException("Select a printer, enter content and choose a quantity between 1 and 100.");
-                var bytes = Encoding.UTF8.GetBytes(_content);
+                var bytes = PrintAgent.CreateTextDocument(_printerId, _content, "demo:prepare", Encoding.UTF8).Content;
                 if (bytes.Length > 8192) throw new InvalidOperationException("The demo accepts payloads up to 8 KiB.");
                 _request = new(Guid.NewGuid(), _printerId, Convert.ToBase64String(bytes), _quantity, []);
             }
             await SaveAsync(); // Persist immutable content, destination and keys before submitting.
             var documents = Enumerable.Range(0, _request.Quantity).Select(i => new PrintDocument(
                 _request.PrinterId, Convert.FromBase64String(_request.ContentBase64), $"demo:{_request.Id:N}:{i}")).ToArray();
-            _jobs = (await PrintAgent.SendBatchAsync(documents, _lifetime.Token)).ToList();
+            // Single text sends demonstrate SendAsync; stored bytes remain authoritative for reconciliation.
+            _jobs = documents.Length == 1
+                ? [await PrintAgent.SendAsync(documents[0].PrinterId, new UTF8Encoding(false, true).GetString(documents[0].Content), documents[0].IdempotencyKey, Encoding.UTF8, _lifetime.Token)]
+                : (await PrintAgent.SendBatchAsync(documents, _lifetime.Token)).ToList();
             _request = _request with { Jobs = _jobs.Select(j => j.Id).ToList() };
             await SaveAsync();
             await RefreshJobsAsync();

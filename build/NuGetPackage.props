@@ -10,8 +10,8 @@
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>sinergia.png</PackageIcon>
-    <PackageTags>printing;printagent;blazor;blazor-server;dotnet;csharp;label-printing;thermal-printer;receipt;barcode;raw;zpl;zebra;escpos;websocket;windows;tcp;sinergiaai</PackageTags>
-    <PackageReleaseNotes>Windows tray application, Start menu shortcut, per-user desktop startup, service start/stop controls and native website authorization requested automatically by StartAsync. Desktop UI follows the Windows display language (English or Portuguese). Requires Windows agent 1.1.0. Local durable queue and idempotency are preserved. No printing API or server database required.</PackageReleaseNotes>
+    <PackageTags>printing;printagent;middleware;blazor;blazor-server;dotnet;csharp;label-printing;thermal-printer;network-printer;raw;zpl;escpos;pcl;postscript;websocket;windows;tcp;sinergiaai</PackageTags>
+    <PackageReleaseNotes>2.0.0: SendAsync now accepts text with configurable strict encoding; use SendByteAsync for existing byte-array calls. CreateTextDocument prepares mixed text/binary batches. English XML API documentation is included for IntelliSense and metadata navigation. Windows agent discovers shared printers from active user sessions and selects their delivery identity without retrying uncertain writes. RAW printing bridge for compatible label, receipt and ordinary-paper printers. Durable queue, protocol 2 and idempotency are preserved. See docs/migration-2.0.md.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>
   <ItemGroup>

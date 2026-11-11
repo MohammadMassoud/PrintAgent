@@ -8,7 +8,7 @@ import xml.etree.ElementTree as ET
 import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
-props = ET.parse(ROOT / "build/NuGetPackage.props")
+props = ET.parse(ROOT / "build/Version.props")
 version = props.findtext("./PropertyGroup/Version")
 package = ROOT / "artifacts/nuget-unified" / f"SinergiaAI.PrintAgent.{version}.nupkg"
 
@@ -16,6 +16,11 @@ with zipfile.ZipFile(package) as archive:
     files = set(archive.namelist())
     for component in ("Server", "Client", "Contracts"):
         assert f"lib/net10.0/SinergiaAI.PrintAgent.{component}.dll" in files, component
+    documentation = ET.fromstring(archive.read("lib/net10.0/SinergiaAI.PrintAgent.Server.xml"))
+    members = documentation.findall("./members/member")
+    for method in ("SendAsync", "SendByteAsync", "CreateTextDocument", "SendBatchAsync", "StartAsync", "GetJobsAsync"):
+        matches = [m for m in members if m.get("name", "").startswith("M:SinergiaAI.PrintAgent.PrintAgent." + method + "(")]
+        assert matches and all(m.find("summary") is not None and m.find("returns") is not None for m in matches), method
     assert not any(name.startswith("lib/") and "/SinergiaPrint." in name for name in files)
     assert "README.md" in files and "LICENSE" in files
     assert "sinergia.png" in files and archive.read("sinergia.png").startswith(b'\x89PNG\r\n\x1a\n')

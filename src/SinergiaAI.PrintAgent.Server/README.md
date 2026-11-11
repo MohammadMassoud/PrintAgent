@@ -1,12 +1,12 @@
-# PrintAgent by SinergiaAI — ZPL label and ESC/POS printing for Blazor
+# PrintAgent by SinergiaAI — RAW printing bridge for Blazor and .NET
 
 ![SinergiaAI](https://raw.githubusercontent.com/MohammadMassoud/PrintAgent/main/branding/sinergia.png)
 
-Print ZPL labels and ESC/POS receipts from Blazor Server and .NET 10 to local Windows and network TCP printers. PrintAgent connects the browser directly to a Windows service over WebSocket, with a durable local print queue, delivery status and stable request keys. Developed by SinergiaAI. Free and open source under the MIT license.
+Connect Blazor Server and .NET 10 applications to local Windows queues, shared network printers and TCP destinations. PrintAgent is RAW printing middleware for compatible label, receipt and ordinary-paper printers. PrintAgent connects the browser directly to a Windows service over WebSocket, with a durable local print queue, delivery status and stable request keys. Developed by SinergiaAI. Free and open source under the MIT license.
 
 [Product website](https://www.sinergiaai.com/printagent) · [Integration](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/integration.md) · [Troubleshooting](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/troubleshooting.md)
 
-## Print labels and thermal receipts from Blazor
+## Connect web applications to compatible printers
 
 Use PrintAgent for ZPL labels and barcodes on Zebra or other compatible printers, ESC/POS receipts on compatible thermal printers, and application-generated RAW commands. The agent runs on the Windows workstation connected to the printer, allowing hosted Blazor applications to reach local printers through the browser.
 
@@ -26,10 +26,10 @@ The default integration has no printing API, server database, API key, remote en
 
 ## Integration
 
-Requires .NET 10, Blazor Server / Interactive Server and Windows x64. Package **1.1.0** uses protocol 2 and requires Windows agent **1.1.0**. Both components must be upgraded from 0.x.
+Requires .NET 10, Blazor Server / Interactive Server and Windows x64. Package **2.0.0** uses protocol 2 and requires Windows agent **2.0.0**. Both components must be upgraded from 0.x.
 
 ```shell
-dotnet add package SinergiaAI.PrintAgent --version 1.1.0
+dotnet add package SinergiaAI.PrintAgent --version 2.0.0
 ```
 
 ```csharp
@@ -56,9 +56,31 @@ var names = PrintAgent.Printers;
 var printers = PrintAgent.PrintersInfo; // Id, Name, IsDefault
 
 // Persist the key, destination and bytes before submitting.
-var job = await PrintAgent.SendAsync(printerId, rawBytes, persistedRequestKey);
-var results = await PrintAgent.GetJobsAsync(new[] { job.Id });
+var textJob = await PrintAgent.SendAsync(printerId, commands, textRequestKey);
+var byteJob = await PrintAgent.SendByteAsync(printerId, rawBytes, byteRequestKey);
+var results = await PrintAgent.GetJobsAsync(new[] { textJob.Id, byteJob.Id });
 ```
+
+`SendAsync` converts text with the configured encoding (strict UTF-8 by default). `SendByteAsync` forwards exact bytes. Both use the same RAW queue and stable request keys. No BOM, line endings or printer-language conversion is added. The device must support the commands and encoding.
+
+```csharp
+using System.Text;
+
+builder.Services.AddPrintAgent(o => o.TextEncoding = Encoding.ASCII);
+// Override the default for a printer that understands UTF-8:
+await PrintAgent.SendAsync(printerId, zpl, savedKey, Encoding.UTF8);
+
+var text = PrintAgent.CreateTextDocument(printerId, zpl, textKey, Encoding.UTF8);
+var binary = new PrintDocument(printerId, rawBytes, binaryKey);
+// Persist both documents before submitting the mixed batch.
+await PrintAgent.SendBatchAsync(new[] { text, binary });
+```
+
+An encoding mismatch is rejected before transport when characters cannot be represented. Register `CodePagesEncodingProvider.Instance` before using legacy encodings such as `Encoding.GetEncoding(1252)`. UTF-8 is not universal printer support.
+
+A request key identifies one website-origin, destination and byte sequence; it is not an API secret or a cancellation token. Cancelling submission waiting cannot retract a job already accepted by the agent.
+
+**Upgrading from 1.x:** change byte-array calls from `SendAsync` to `SendByteAsync`, retaining the exact content and keys. See the [2.0 migration guide](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/migration-2.0.md). English XML API documentation is bundled for IntelliSense and F12 metadata navigation.
 
 `SendBatchAsync` accepts 1–5,000 documents, at most 2 MiB each and 4 MiB of RAW data per batch. Accepted batches are committed atomically. The pending local queue is limited to 256 MiB. Completed jobs retain keys, hashes and results for deduplication while releasing payload storage.
 
@@ -130,19 +152,10 @@ Old queues, credentials and journals are preserved, not imported or automaticall
 [Migration checklist](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/migration-1.0.md) · [Release guide](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/nuget-publication.md)
 
 
-## Desktop application (1.1.0)
+## Desktop application
 
 The installer creates a **SinergiaAI PrintAgent** Start menu shortcut and starts its tray application at Windows sign-in. Double-click its icon to open status and service controls. Opening the Start shortcut brings an existing instance forward and attempts to start a stopped service. Windows administrator consent is required for service start/stop.
 
 Closing the window hides it to the tray. **Exit tray app** removes only the icon. **Stop service and exit** stops printing and closes the tray app, preserving pending work. Interrupted delivery remains Unknown and is not automatically resent. Website permissions can be removed in **Authorized websites**.
 
 Desktop menus and permission windows follow the current Windows user's display language: English for English Windows; Portuguese otherwise. Public SDK identifiers, comments and error contracts remain English. The tray's local named-pipe checks do not poll any application API. StartAsync requests a native decision but never authorizes a website itself.
-
-
-## Windows desktop correction (1.1.0)
-
-The refreshed Windows installer retains version 1.1.0, matching NuGet 1.1.0. It fixes local control response disposal, restores authorized-website queries and displays the actual Windows service state. Start and Stop controls are disabled for inappropriate or changing states. The version appears beside the product name.
-
-Download and run the current setup again to apply this desktop correction. No application deployment or NuGet update is required. Existing local queue and configuration are preserved. Do not republish the existing NuGet 1.1.0 package.
-
-The SDK, Windows service and desktop application share the release version in `build/Version.props`. The publishing script also passes this version to the installer compiler.
