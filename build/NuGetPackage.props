@@ -2,15 +2,16 @@
   <Import Project="Version.props" />
   <PropertyGroup>
     <IsPackable>false</IsPackable>
-    <Authors>MohammadMassoud</Authors>
+    <Authors>SinergiaAI, MohammadMassoud</Authors>
     <Company>SinergiaAI</Company>
+    <Copyright>Copyright (c) 2026 MohammadMassoud</Copyright>
     <PackageProjectUrl>https://www.sinergiaai.com/printagent</PackageProjectUrl>
     <RepositoryUrl>https://github.com/MohammadMassoud/PrintAgent.git</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <PackageIcon>sinergia.png</PackageIcon>
-    <PackageTags>printing;printagent;middleware;blazor;blazor-server;dotnet;csharp;label-printing;thermal-printer;network-printer;raw;zpl;escpos;pcl;postscript;websocket;windows;tcp;sinergiaai</PackageTags>
+    <PackageTags>printing;printagent;middleware;blazor;blazor-server;dotnet;csharp;label-printing;thermal-printer;network-printer;receipt;barcode;raw;zpl;escpos;pcl;postscript;websocket;windows;tcp;sinergiaai</PackageTags>
     <PackageReleaseNotes>2.1.0: Unified SendAsync overloads accept text, bytes, text lists, byte-array lists and mixed PrintDocument lists. Caller-supplied request keys are optional; omitted keys identify new requests. Prepared documents retain their generated identities across calls. SendByteAsync and SendBatchAsync remain compatible aliases, hidden from IntelliSense. Strict encoding, durable local queue, protocol 2 and no automatic retry of uncertain delivery are preserved. Compatible with Windows agent 2.0.0. See docs/migration-2.1.md.</PackageReleaseNotes>
     <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
   </PropertyGroup>

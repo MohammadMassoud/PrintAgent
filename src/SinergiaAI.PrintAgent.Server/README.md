@@ -1,14 +1,39 @@
 # PrintAgent by SinergiaAI — RAW printing bridge for Blazor and .NET
 
+[![NuGet version](https://img.shields.io/nuget/v/SinergiaAI.PrintAgent.svg)](https://www.nuget.org/packages/SinergiaAI.PrintAgent)
+[![NuGet downloads](https://img.shields.io/nuget/dt/SinergiaAI.PrintAgent.svg)](https://www.nuget.org/packages/SinergiaAI.PrintAgent)
+[![Windows checks](https://img.shields.io/github/actions/workflow/status/MohammadMassoud/PrintAgent/ci.yml?branch=main&label=Windows%20checks)](https://github.com/MohammadMassoud/PrintAgent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](https://github.com/MohammadMassoud/PrintAgent/blob/main/LICENSE)
+
 ![SinergiaAI](https://raw.githubusercontent.com/MohammadMassoud/PrintAgent/main/branding/sinergia.png)
 
 Connect Blazor Server and .NET 10 applications to local Windows queues, shared network printers and TCP destinations. PrintAgent is RAW printing middleware for compatible label, receipt and ordinary-paper printers. PrintAgent connects the browser directly to a Windows service over WebSocket, with a durable local print queue, delivery status and optional application-supplied request keys. Developed by SinergiaAI. Free and open source under the MIT license.
 
-[Product website](https://www.sinergiaai.com/printagent) · [Integration](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/integration.md) · [Troubleshooting](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/troubleshooting.md)
+[Product website](https://www.sinergiaai.com/printagent) · [Source repository](https://github.com/MohammadMassoud/PrintAgent) · [Documentation](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/README.md) · [Releases](https://github.com/MohammadMassoud/PrintAgent/releases) · [Português](https://github.com/MohammadMassoud/PrintAgent/blob/main/README.pt-BR.md)
+
+## Requirements and Windows agent
+
+| Component | Requirement |
+| --- | --- |
+| Application | .NET 10, Blazor Server / Interactive Server |
+| SDK described here | 2.1.0 |
+| Compatible workstation agent | Windows x64 agent 2.0.0, protocol 2 |
+| Printer | Windows queue, shared network printer or configured TCP destination that accepts your RAW commands |
+| License | MIT; free for commercial use and modification under its terms |
+
+Install this NuGet package in the application and the [Windows agent](https://github.com/MohammadMassoud/PrintAgent/releases/tag/v2.1.0) on the workstation connected to the printer. SDK 2.1.0 is a compatible SDK-only update: the Windows agent remains 2.0.0. See [download verification and SHA-256 checksums](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/downloads.md).
+
+```shell
+dotnet add package SinergiaAI.PrintAgent --version 2.1.0
+```
+
+## What changed in SDK 2.1
+
+Use `SendAsync` for text, bytes, text lists, byte-array lists and prepared documents. Caller-supplied request keys are optional; omitting a key creates a new request for every plain call. Prepared documents retain their generated identity. See the [2.1 migration guide](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/migration-2.1.md) and [release notes](https://github.com/MohammadMassoud/PrintAgent/releases/tag/v2.1.0).
 
 ## Connect web applications to compatible printers
 
-Use PrintAgent for ZPL labels and barcodes on Zebra or other compatible printers, ESC/POS receipts on compatible thermal printers, and application-generated RAW commands. The agent runs on the Windows workstation connected to the printer, allowing hosted Blazor applications to reach local printers through the browser.
+Use PrintAgent for ZPL labels and barcodes on Zebra or other compatible printers, ESC/POS receipts on compatible thermal printers, and application-generated PCL, PostScript or other RAW commands on supported devices. The agent runs on the Windows workstation connected to the printer, allowing hosted Blazor applications to reach local printers through the browser. Compatibility depends on the commands supported by the selected printer.
 
 [ZPL label printing tutorial](https://www.sinergiaai.com/printagent/blazor-zpl-label-printing.html) · [ESC/POS receipt printing tutorial](https://www.sinergiaai.com/printagent/blazor-escpos-receipt-printing.html) · [Documentação em português](https://www.sinergiaai.com/printagent/pt-br.html).
 
@@ -26,11 +51,7 @@ The default integration has no printing API, server database, API key, remote en
 
 ## Integration
 
-Requires .NET 10, Blazor Server / Interactive Server and Windows x64. Package **2.1.0** uses protocol 2 and works with Windows agent **2.0.0**. Both components must be upgraded from 0.x.
-
-```shell
-dotnet add package SinergiaAI.PrintAgent --version 2.1.0
-```
+Package **2.1.0** uses protocol 2 and works with Windows agent **2.0.0**. Applications upgrading from 0.x must review the migration guides for both components.
 
 ```csharp
 using SinergiaAI.PrintAgent;
@@ -163,3 +184,13 @@ The installer creates a **SinergiaAI PrintAgent** Start menu shortcut and starts
 Closing the window hides it to the tray. **Exit tray app** removes only the icon. **Stop service and exit** stops printing and closes the tray app, preserving pending work. Interrupted delivery remains Unknown and is not automatically resent. Website permissions can be removed in **Authorized websites**.
 
 Desktop menus and permission windows follow the current Windows user's display language: English for English Windows; Portuguese otherwise. Public SDK identifiers, comments and error contracts remain English. The tray's local named-pipe checks do not poll any application API. StartAsync requests a native decision but never authorizes a website itself.
+
+## Documentation, feedback and contributions
+
+- [Documentation index](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/README.md): integration, downloads, tutorials and migration.
+- [Troubleshooting](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/troubleshooting.md): connection, authorization, storage and delivery errors.
+- [Changelog](https://github.com/MohammadMassoud/PrintAgent/blob/main/CHANGELOG.md): SDK and Windows agent release history.
+- [Report an issue or suggest an improvement](https://github.com/MohammadMassoud/PrintAgent/issues/new/choose), in English or Portuguese. Remove credentials and sensitive print data.
+- [Contribute](https://github.com/MohammadMassoud/PrintAgent/blob/main/CONTRIBUTING.md) or [report a security vulnerability privately](https://github.com/MohammadMassoud/PrintAgent/security/advisories/new).
+
+Developed by **SinergiaAI**. [MIT license](https://github.com/MohammadMassoud/PrintAgent/blob/main/LICENSE).

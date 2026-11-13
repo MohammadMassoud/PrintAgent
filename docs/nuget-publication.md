@@ -72,3 +72,11 @@ This SDK-only release unifies SendAsync overloads and makes caller-supplied keys
 - Review the release notes, asset names and hashes in a draft, then publish as a stable release. Never recreate an existing version tag against a different commit.
 - Keep [CHANGELOG.md](../CHANGELOG.md), [downloads](downloads.md) and the English/Portuguese READMEs current. A package on NuGet.org does not automatically appear in GitHub Packages; NuGet.org remains the primary SDK registry.
 - The Windows workflow runs builds and simulated transport/error/sending checks. It does not install a permanent service, print to hardware or automatically publish binaries.
+
+## NuGet presentation updates prepared for the next functional release
+
+Version 2.1.0 is already published and remains unchanged. Its Project website is `https://www.sinergiaai.com/printagent`, and Source repository is `https://github.com/MohammadMassoud/PrintAgent.git`. License, embedded icon, README and exact source commit are already present.
+
+The package source now includes clearer SinergiaAI author branding, copyright matching LICENSE, receipt/barcode search tags, and an expanded package README with badges, compatibility, downloads, migration, support and contribution links. Publish these changes together with the next functional update; do not create a cosmetic 2.1.1 or overwrite the published 2.1.0 package.
+
+Before that release, update the version-specific install command, SDK/agent compatibility table, "What changed" section, release links and release notes in the package README. Validate the resulting `.nuspec`, README images and code examples through package checks and the NuGet upload preview. The current 2.1 examples document the published stable API, not a promise about the next release's version number.
