@@ -62,3 +62,13 @@ Run `dotnet run --project tests/Sending -c Release` to verify strict encoding, m
 ## SDK 2.1.0
 
 This SDK-only release unifies SendAsync overloads and makes caller-supplied keys optional. Windows agent 2.0.0 remains compatible; do not rebuild or replace its pinned installer merely to publish this package. Build and test the NuGet, verify optional/generated identities and mixed lists, publish 2.1.0, then activate the updated landing-page examples.
+
+## GitHub Release publication
+
+- Mark the exact published package source commit with the release tag. The official NuGet `.nuspec` includes its repository commit; check this against the tag instead of tagging unrelated later changes.
+- Keep SDK and compatible agent versions explicit in release notes, the README and download documentation. For SDK 2.1.0, retain agent 2.0.0 and its existing installer bytes.
+- Attach the published installer and the official repository-signed `.nupkg` downloaded from NuGet.org. Generate `SHA256SUMS.txt` from the exact uploaded bytes. Do not substitute a locally rebuilt package with the same version number.
+- Compare the installer hash with `InstallerRelease.cs` and its immutable public download. Do not replace old immutable downloads or rebuild an unchanged agent for an SDK-only release.
+- Review the release notes, asset names and hashes in a draft, then publish as a stable release. Never recreate an existing version tag against a different commit.
+- Keep [CHANGELOG.md](../CHANGELOG.md), [downloads](downloads.md) and the English/Portuguese READMEs current. A package on NuGet.org does not automatically appear in GitHub Packages; NuGet.org remains the primary SDK registry.
+- The Windows workflow runs builds and simulated transport/error/sending checks. It does not install a permanent service, print to hardware or automatically publish binaries.

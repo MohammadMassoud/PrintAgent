@@ -1,5 +1,11 @@
 # PrintAgent by SinergiaAI — RAW printing bridge for Blazor and .NET
 
+[![NuGet version](https://img.shields.io/nuget/v/SinergiaAI.PrintAgent.svg)](https://www.nuget.org/packages/SinergiaAI.PrintAgent)
+[![NuGet downloads](https://img.shields.io/nuget/dt/SinergiaAI.PrintAgent.svg)](https://www.nuget.org/packages/SinergiaAI.PrintAgent)
+[![Latest release](https://img.shields.io/github/v/release/MohammadMassoud/PrintAgent.svg)](https://github.com/MohammadMassoud/PrintAgent/releases/latest)
+[![Windows checks](https://github.com/MohammadMassoud/PrintAgent/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MohammadMassoud/PrintAgent/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 ![SinergiaAI](https://raw.githubusercontent.com/MohammadMassoud/PrintAgent/main/branding/sinergia.png)
 
 Connect Blazor Server and .NET 10 applications to local Windows queues, shared network printers and TCP destinations. PrintAgent is RAW printing middleware for compatible label, receipt and ordinary-paper printers. PrintAgent connects the browser directly to a Windows service over WebSocket, with a durable local print queue, delivery status and optional application-supplied request keys. Developed by SinergiaAI. Free and open source under the MIT license.
@@ -7,6 +13,18 @@ Connect Blazor Server and .NET 10 applications to local Windows queues, shared n
 [Product website](https://www.sinergiaai.com/printagent) · [Integration](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/integration.md) · [Troubleshooting](https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/troubleshooting.md)
 
 [Leia em português: impressão de etiquetas no Blazor](README.pt-BR.md).
+
+## Downloads and stable versions
+
+| Component | Stable version | Get it |
+| --- | --- | --- |
+| Blazor / .NET SDK | **2.1.0** | [NuGet.org](https://www.nuget.org/packages/SinergiaAI.PrintAgent/2.1.0) |
+| Windows x64 agent | **2.0.0** | [Download Setup.exe](https://github.com/MohammadMassoud/PrintAgent/releases/download/v2.1.0/SinergiaPrint-Setup.exe) |
+| Release notes and SHA-256 checksums | SDK 2.1.0 + agent 2.0.0 | [GitHub Release](https://github.com/MohammadMassoud/PrintAgent/releases/tag/v2.1.0) |
+
+SDK 2.1.0 is a compatible SDK-only update; the Windows agent stays at 2.0.0. Install the agent on the Windows workstation connected to the printer and the NuGet package in the Blazor Server application. Downloads contain the existing published binaries. The installer is currently unsigned, so Windows may display a SmartScreen warning; see the [download verification guide](docs/downloads.md).
+
+[Documentation index](docs/README.md) · [What changed](CHANGELOG.md) · [2.1 migration](docs/migration-2.1.md) · [Report an issue](https://github.com/MohammadMassoud/PrintAgent/issues/new/choose) · [Contributing](CONTRIBUTING.md)
 
 ## Connect web applications to compatible printers
 

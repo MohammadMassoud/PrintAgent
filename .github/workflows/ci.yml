@@ -1,0 +1,36 @@
+name: Windows checks
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: windows-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-and-test:
+    runs-on: windows-latest
+    timeout-minutes: 15
+    steps:
+      - name: Check out source
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5
+      - name: Install .NET 10 SDK
+        uses: actions/setup-dotnet@26b0ec14cb23fa6904739307f278c14f94c95bf1 # v5
+        with:
+          dotnet-version: 10.0.x
+      - name: Build solution
+        run: dotnet build SinergiaAI.PrintAgent.slnx
+      - name: Verify legacy API transport and durable recovery
+        run: python tests/integration.py
+      - name: Verify direct WebSocket transport and origin authorization
+        run: python tests/websocket_integration.py
+      - name: Verify actionable SDK errors
+        run: dotnet run --project tests/ErrorHandling --no-build
+      - name: Verify text, binary and list sending
+        run: dotnet run --project tests/Sending --no-build

@@ -1,10 +1,27 @@
 # PrintAgent by SinergiaAI — ponte de impressão RAW para Blazor e .NET
 
+[![Versão NuGet](https://img.shields.io/nuget/v/SinergiaAI.PrintAgent.svg)](https://www.nuget.org/packages/SinergiaAI.PrintAgent)
+[![Última release](https://img.shields.io/github/v/release/MohammadMassoud/PrintAgent.svg)](https://github.com/MohammadMassoud/PrintAgent/releases/latest)
+[![Verificações no Windows](https://github.com/MohammadMassoud/PrintAgent/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/MohammadMassoud/PrintAgent/actions/workflows/ci.yml)
+[![Licença MIT](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE)
+
 O **SinergiaAI.PrintAgent** é uma ponte de impressão RAW entre aplicativos Blazor Server / .NET 10 e impressoras Windows ou TCP. Atende impressoras de etiquetas, térmicas e de papel comum que aceitem os comandos enviados pelo aplicativo. Um agente no computador Windows recebe os bytes pelo navegador e os encaminha para uma impressora Windows ou um destino TCP configurado.
 
 O projeto é independente, gratuito e de código aberto com licença MIT. Pode ser utilizado em diferentes aplicativos que precisem de impressão local.
 
 [Site e download](https://www.sinergiaai.com/printagent/pt-br.html) · [Pacote NuGet](https://www.nuget.org/packages/SinergiaAI.PrintAgent) · [English documentation](README.md)
+
+## Downloads e versões estáveis
+
+| Componente | Versão | Download |
+| --- | --- | --- |
+| SDK para Blazor / .NET | **2.1.0** | [NuGet.org](https://www.nuget.org/packages/SinergiaAI.PrintAgent/2.1.0) |
+| Agente Windows x64 | **2.0.0** | [Instalador Setup.exe](https://github.com/MohammadMassoud/PrintAgent/releases/download/v2.1.0/SinergiaPrint-Setup.exe) |
+| Novidades e hashes SHA-256 | SDK 2.1.0 + agente 2.0.0 | [Release no GitHub](https://github.com/MohammadMassoud/PrintAgent/releases/tag/v2.1.0) |
+
+A atualização 2.1.0 é do SDK; o agente Windows compatível continua sendo o 2.0.0. Instale o agente na estação conectada à impressora e o NuGet no aplicativo Blazor Server. O instalador ainda não possui assinatura digital e pode exibir o aviso do SmartScreen. Consulte a [verificação dos downloads](docs/downloads.md).
+
+[Índice da documentação](docs/README.md) · [Histórico de mudanças](CHANGELOG.md) · [Migração 2.1](docs/migration-2.1.md) · [Relatar um problema](https://github.com/MohammadMassoud/PrintAgent/issues/new/choose)
 
 ## Como imprimir etiquetas no Blazor Server
 

@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Documentation / Documentação
+    url: https://github.com/MohammadMassoud/PrintAgent/blob/main/docs/README.md
+    about: Start with integration, downloads, migration and troubleshooting guides.
+  - name: Security vulnerability / Vulnerabilidade de segurança
+    url: https://github.com/MohammadMassoud/PrintAgent/security/advisories/new
+    about: Report vulnerabilities privately; do not include exploitable details in public issues.

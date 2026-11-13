@@ -1,0 +1,38 @@
+name: Bug report / Relatar problema
+description: Report a reproducible printing, connection or SDK problem.
+body:
+  - type: markdown
+    attributes:
+      value: "English or Portuguese is welcome. Remove credentials, tokens, personal data and sensitive print payloads. Use the private security channel for vulnerabilities."
+  - type: input
+    id: versions
+    attributes:
+      label: SDK and Windows agent versions
+      placeholder: "SDK 2.1.0, Windows agent 2.0.0"
+    validations:
+      required: true
+  - type: input
+    id: environment
+    attributes:
+      label: Windows, .NET and Blazor hosting mode
+      placeholder: "Windows 11 x64, .NET 10, Blazor Interactive Server"
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps and minimal reproduction
+      description: Include whether this reproduces with the simulated demo. Use synthetic data.
+    validations:
+      required: true
+  - type: textarea
+    id: behavior
+    attributes:
+      label: Expected and actual behavior
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Error code and sanitized diagnostics
+      description: Include relevant job states and printer model/language if applicable. Inspect uncertain deliveries before authorizing another copy.
